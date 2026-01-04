@@ -1,0 +1,2148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="곱하기 마스터">
+  <meta name="theme-color" content="#1a0a2e">
+  <title>곱하기 마스터</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+    html, body { height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #1a1408 0%, #2d2410 50%, #1a1408 100%); color: #fff; transition: background 0.5s ease; }
+
+    /* 라운드별 배경색 */
+    body.round-1 { background: linear-gradient(135deg, #1a1408 0%, #2d2410 50%, #1a1408 100%); }
+    body.round-2 { background: linear-gradient(135deg, #1c160a 0%, #2f2612 50%, #1c160a 100%); }
+    body.round-3 { background: linear-gradient(135deg, #1e180c 0%, #312814 50%, #1e180c 100%); }
+    
+    /* 목표 달성 축하 애니메이션 */
+    .goal-celebration {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;
+    }
+    .goal-celebration .celebration-text {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 48px; font-weight: 900; color: #ffd93d; text-shadow: 0 0 20px #ffd93d, 0 0 40px #ff6b6b;
+      animation: celebrateText 2s ease-out forwards; opacity: 0;
+      text-align: center; width: 90%; max-width: 400px;
+    }
+    @keyframes celebrateText {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+      30% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+      50% { transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5) translateY(-50px); }
+    }
+    .celebration-reward {
+      font-size: 32px; margin-top: 15px; color: #fff;
+      text-shadow: 0 0 15px #ff69b4, 0 0 30px #ffd93d;
+      animation: rewardPop 0.5s ease-out 0.3s both;
+      text-align: center;
+    }
+    @keyframes rewardPop {
+      0% { opacity: 0; transform: scale(0); }
+      70% { transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .confetti {
+      position: absolute; width: 10px; height: 10px; opacity: 0;
+      animation: confettiFall 3s ease-out forwards;
+    }
+    @keyframes confettiFall {
+      0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+      100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+    }
+    .firework {
+      position: absolute; width: 6px; height: 6px; border-radius: 50%;
+      animation: fireworkBurst 1s ease-out forwards;
+    }
+    @keyframes fireworkBurst {
+      0% { opacity: 1; transform: scale(0); }
+      50% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(2); }
+    }
+    .container { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    .hidden { display: none !important; }
+    button { font-family: inherit; cursor: pointer; border: none; }
+    input { font-family: inherit; }
+    
+    /* 언어 선택 */
+    .lang-selector { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; max-width: 340px; margin: 0 auto 15px auto; }
+    .lang-btn { padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.1); color: #888; border: 1px solid #444 !important; }
+    .lang-btn.active { background: rgba(255,107,107,0.2); color: #ff6b6b; border-color: #ff6b6b !important; }
+    
+    /* 타이틀 */
+    .title-icon { font-size: 70px; font-weight: 900; background: linear-gradient(135deg, #ff6b6b, #ffd93d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .title-text { font-size: 32px; font-weight: 700; margin: 10px 0; text-align: center; }
+    
+    /* 정답/오답 애니메이션 */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+      20%, 40%, 60%, 80% { transform: translateX(8px); }
+    }
+    @keyframes bounce {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.3); }
+      50% { transform: scale(0.9); }
+      70% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    @keyframes correctPulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 217, 61, 0.7); }
+      70% { box-shadow: 0 0 0 20px rgba(255, 217, 61, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 217, 61, 0); }
+    }
+    .shake { animation: shake 0.5s ease-in-out; }
+    .bounce { animation: bounce 0.4s ease-out; }
+    .correct-pulse { animation: correctPulse 0.6s ease-out; }
+    .title-sub { color: #aa88cc; margin-bottom: 30px; }
+    .best-record { color: #ffd93d; font-size: 14px; margin-bottom: 30px; }
+    .btn-start { background: linear-gradient(135deg, #ff6b6b, #ff8e53); padding: 16px 48px; border-radius: 50px; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 15px; box-shadow: 0 0 30px rgba(255,107,107,0.4); }
+    .btn-practice { background: linear-gradient(135deg, #10b981, #34d399); padding: 14px 40px; border-radius: 50px; font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 15px; box-shadow: 0 0 20px rgba(16,185,129,0.4); }
+    .btn-quit { background: rgba(239,68,68,0.2); border: 2px solid #ef4444 !important; padding: 10px 24px; border-radius: 50px; font-size: 14px; color: #ef4444; margin-top: 20px; }
+    .btn-how { background: transparent; border: 2px solid #555 !important; padding: 10px 20px; border-radius: 50px; font-size: 13px; color: #888; }
+    .btn-rank { background: linear-gradient(135deg, #f59e0b, #fbbf24); padding: 14px 40px; border-radius: 50px; font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 15px; box-shadow: 0 0 20px rgba(245,158,11,0.4); }
+    .bottom-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+    
+    /* 게임 방법 모달 */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-content { background: linear-gradient(135deg, #2d1b4e, #1a0a2e); border-radius: 20px; padding: 30px; max-width: 350px; border: 1px solid #444; max-height: 80vh; overflow-y: auto; }
+    .modal-title { font-size: 24px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+    .modal-text { color: #aaa; font-size: 14px; line-height: 1.8; margin-bottom: 15px; }
+    .modal-text strong { color: #ff6b6b; }
+    .modal-text .gold { color: #ffd700; }
+    .modal-close { background: linear-gradient(135deg, #ff6b6b, #ff8e53); padding: 12px 40px; border-radius: 50px; font-size: 16px; font-weight: 700; color: #fff; margin-top: 20px; width: 100%; }
+    
+    /* 이름 입력 */
+    .name-label { margin-bottom: 30px; font-size: 20px; }
+    .name-input { background: rgba(255,255,255,0.1); border: 2px solid #444; border-radius: 12px; padding: 16px 24px; font-size: 18px; color: #fff; text-align: center; width: 250px; outline: none; }
+    .btn-go { background: linear-gradient(135deg, #ff6b6b, #ff8e53); padding: 14px 40px; border-radius: 50px; font-size: 16px; font-weight: 700; color: #fff; margin-top: 30px; }
+    .btn-go:disabled { background: #333; color: #666; }
+    .btn-home { background: transparent; border: 2px solid #555 !important; padding: 12px 32px; border-radius: 50px; font-size: 14px; color: #888; margin-top: 15px; }
+    
+    /* 라운드 전환 화면 */
+    .round-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, #1a1408, #2d2410); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
+    .round-number { font-size: 80px; font-weight: 900; background: linear-gradient(135deg, #ff6b6b, #ffd93d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: roundPop 0.5s ease-out; }
+    .round-text { font-size: 28px; margin-top: 10px; color: #fff; }
+    .round-sub { font-size: 16px; color: #aa88cc; margin-top: 15px; }
+    @keyframes roundPop { 0% { transform: scale(0.5); opacity: 0; } 50% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+    
+    /* 게임 */
+    .game-area { width: 100%; max-width: 400px; text-align: center; }
+    .player-display { font-size: 16px; font-weight: 600; color: #ffd93d; margin-bottom: 10px; }
+    .game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 14px; color: #888; }
+    
+    /* 점수판 */
+    .score-container { position: relative; padding: 8px 20px; background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,150,0,0.1)); border-radius: 20px; border: 2px solid rgba(255,107,107,0.5); box-shadow: 0 0 20px rgba(255,107,107,0.3); }
+    .score-container.bonus-active { animation: scoreGlow 0.5s ease-out; border-color: #ffd93d; box-shadow: 0 0 30px rgba(255,217,61,0.6), 0 0 60px rgba(255,150,0,0.3); }
+    @keyframes scoreGlow { 0% { transform: scale(1); } 30% { transform: scale(1.2); } 100% { transform: scale(1); } }
+    .score-text { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #ffd93d, #ff8e53); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .score-text.animating { animation: scorePop 0.4s ease-out; }
+    @keyframes scorePop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    
+    .game-header .hl-orange { color: #ff6b6b; font-weight: 700; }
+    .game-header .hl-yellow { color: #ffd93d; font-weight: 700; }
+    
+    /* 라운드 정보 */
+    .round-info { font-size: 12px; color: #aa88cc; margin-bottom: 10px; padding: 5px 15px; background: rgba(170,136,204,0.1); border-radius: 15px; display: inline-block; }
+    
+    /* 타이머 바 */
+    .timer-labels { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 10px; }
+    .timer-label { padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+    .timer-label.gold { background: rgba(255,215,0,0.3); color: #ffd700; }
+    .timer-label.orange { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+    .timer-label.purple { background: rgba(136,102,170,0.2); color: #aa88cc; }
+    
+    .timer-bar { width: 100%; height: 12px; background: #222; border-radius: 6px; margin-bottom: 20px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+    .timer-fill { height: 100%; border-radius: 6px; transition: background 0.3s; }
+    .timer-fill.bonus10 { background: linear-gradient(90deg, #ffd700, #ffaa00, #ffd700); box-shadow: 0 0 15px #ffd700; animation: timerPulse10 0.3s infinite alternate; }
+    .timer-fill.bonus5 { background: linear-gradient(90deg, #ff6b6b, #ff8e53, #ff6b6b); box-shadow: 0 0 10px #ff6b6b; }
+    .timer-fill.nobonus { background: linear-gradient(90deg, #8866aa, #6644aa); }
+    @keyframes timerPulse10 { from { filter: brightness(1); } to { filter: brightness(1.3); } }
+    
+    .question-box { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 30px; margin-bottom: 25px; position: relative; overflow: hidden; border: 1px solid rgba(255,107,107,0.1); }
+    
+    /* 보너스 텍스트 */
+    .bonus-float { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 60px; font-weight: 900; pointer-events: none; z-index: 100; opacity: 0; }
+    .bonus-float.bonus10 { background: linear-gradient(135deg, #ffd700, #ff8c00); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px #ffd700); }
+    .bonus-float.bonus5 { background: linear-gradient(135deg, #ff6b6b, #ff8e53); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px #ff6b6b); }
+    .bonus-float.bonus0 { background: linear-gradient(135deg, #ffffff, #aaaaaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 40px; }
+    .bonus-float.animate { animation: bonusFloat 1s ease-out forwards; }
+    @keyframes bonusFloat { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -150%) scale(0.8); } }
+    
+    /* 파티클 */
+    .particles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+    .particle { position: absolute; width: 10px; height: 10px; border-radius: 50%; animation: particleFly 1s ease-out forwards; }
+    @keyframes particleFly { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); } }
+    
+    .q-problem { font-size: 40px; font-weight: 800; }
+    .q-num1 { color: #ff6b6b; }
+    .q-num2 { color: #ffd93d; }
+    .q-mark { font-size: 28px; margin-top: 15px; color: #555; }
+    .options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .opt-btn { background: rgba(255,255,255,0.1); border: 2px solid #444 !important; border-radius: 16px; padding: 20px; font-size: 26px; font-weight: 700; color: #fff; transition: transform 0.1s; }
+    .opt-btn:active { transform: scale(0.95); }
+    .opt-btn.correct { background: rgba(0,255,136,0.3); border-color: #00ff88 !important; box-shadow: 0 0 20px rgba(0,255,136,0.5); }
+    .opt-btn.wrong { background: rgba(255,68,68,0.3); border-color: #ff4444 !important; }
+    
+    /* 결과 */
+    .result-emoji { font-size: 60px; margin-bottom: 20px; }
+    .result-title { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+    .result-title.win { background: linear-gradient(135deg, #ff6b6b, #ffd93d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .result-title.lose { color: #ff6b6b; }
+    .result-score { font-size: 48px; font-weight: 800; color: #ffd93d; margin: 10px 0; }
+    .result-best { font-size: 14px; color: #ff6b6b; margin-bottom: 10px; }
+    .result-stats { font-size: 13px; color: #888; margin-bottom: 20px; }
+    .result-msg { color: #ff6b6b; margin-bottom: 20px; font-size: 18px; }
+    .btn-retry { background: linear-gradient(135deg, #ff6b6b, #ff8e53); padding: 14px 40px; border-radius: 50px; font-size: 16px; font-weight: 700; color: #fff; margin-right: 10px; }
+    .btn-board { background: transparent; border: 2px solid #ffd93d !important; padding: 14px 40px; border-radius: 50px; font-size: 16px; color: #ffd93d; }
+    
+    /* 리더보드 */
+    .board-list { background: rgba(255,255,255,0.05); border-radius: 16px; overflow: hidden; width: 100%; max-width: 400px; }
+    .board-item { display: flex; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #333; }
+    .board-item:last-child { border-bottom: none; }
+    .board-rank { width: 30px; font-size: 20px; }
+    .board-name { font-weight: 600; }
+    .board-score { color: #ffd93d; font-weight: 700; }
+    .btn-back { background: transparent; border: 2px solid #555 !important; padding: 14px 40px; border-radius: 50px; font-size: 16px; color: #888; margin-top: 30px; }
+    
+    /* 목표 설정 */
+    .btn-goal { background: transparent; border: 2px solid #555 !important; padding: 10px 20px; border-radius: 50px; font-size: 13px; color: #888; }
+    .goal-display { background: rgba(255,217,61,0.1); border: 1px solid rgba(255,217,61,0.3); border-radius: 12px; padding: 12px 20px; margin-bottom: 20px; max-width: 280px; }
+    .goal-target { color: #ffd93d; font-weight: 600; font-size: 14px; }
+    .goal-reward { color: #ff6b6b; font-size: 12px; margin-top: 5px; }
+    
+    .goal-form { text-align: left; }
+    .goal-label { display: block; color: #888; font-size: 12px; margin-bottom: 5px; margin-top: 15px; }
+    .goal-input { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #fff; outline: none; }
+    .goal-input:focus { border-color: #ff6b6b; }
+    .goal-select { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid #444; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #fff; outline: none; }
+    .goal-row { display: flex; gap: 10px; }
+    .goal-row > div { flex: 1; }
+    .goal-buttons { display: flex; gap: 10px; margin-top: 20px; }
+    .goal-buttons button { flex: 1; padding: 12px; border-radius: 25px; font-size: 14px; font-weight: 600; }
+    .btn-save-goal { background: linear-gradient(135deg, #ff6b6b, #ff8e53); color: #fff; }
+    .btn-delete-goal { background: rgba(255,68,68,0.2); color: #ff6b6b; border: 1px solid #ff6b6b !important; }
+    
+    /* 목표 달성 결과 */
+    .goal-result { margin: 15px 0; padding: 15px; border-radius: 12px; }
+    .goal-achieved { background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,217,61,0.2)); border: 2px solid #ffd93d; animation: goalPulse 1s infinite alternate; }
+    .goal-failed { background: rgba(255,255,255,0.05); border: 1px solid #444; }
+    .goal-result-title { font-size: 18px; font-weight: 700; margin-bottom: 5px; }
+    .goal-result-name { font-size: 22px; font-weight: 800; color: #ffd93d; margin: 8px 0; }
+    .goal-result-reward { color: #ffd93d; font-size: 20px; font-weight: 700; margin: 10px 0; }
+    .goal-result-sub { color: #888; font-size: 13px; }
+    .btn-share { background: linear-gradient(135deg, #f59e0b, #fbbf24); padding: 12px 24px; border-radius: 50px; font-size: 14px; font-weight: 600; color: #fff; margin-top: 15px; border: none; cursor: pointer; box-shadow: 0 0 15px rgba(245,158,11,0.4); }
+    @keyframes goalPulse { from { box-shadow: 0 0 20px rgba(255,217,61,0.3); } to { box-shadow: 0 0 40px rgba(255,217,61,0.5); } }
+    
+      margin-top: 20px; padding: 12px 30px; border-radius: 25px;
+      background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+      color: #fff; font-weight: 700; border: none; font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 타이틀 화면 -->
+<div id="screen-title" class="container">
+  <div class="lang-selector">
+    <button class="lang-btn active" onclick="setLang('ko')">한국어</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    <button class="lang-btn" onclick="setLang('es')">ES</button>
+    <button class="lang-btn" onclick="setLang('pt')">PT</button>
+    <button class="lang-btn" onclick="setLang('ru')">RU</button>
+    <button class="lang-btn" onclick="setLang('fr')">FR</button>
+    <button class="lang-btn" onclick="setLang('de')">DE</button>
+    <button class="lang-btn" onclick="setLang('ja')">日本語</button>
+    <button class="lang-btn" onclick="setLang('vi')">VI</button>
+    <button class="lang-btn" onclick="setLang('tr')">TR</button>
+    <button class="lang-btn" onclick="setLang('th')">TH</button>
+    <button class="lang-btn" onclick="setLang('id')">ID</button>
+  </div>
+  <div class="title-icon">×</div>
+  <div id="titleText" class="title-text">곱하기 마스터</div>
+  <div id="titleSub" class="title-sub">구구단부터 19단까지!</div>
+  <div id="bestRecord" class="best-record hidden">🏆 <span id="bestLabel">최고 기록</span>: <span id="bestName"></span> <span id="bestScore">0</span><span id="bestPts">점</span></div>
+  <div id="goalDisplay" class="goal-display hidden">
+    <div id="goalTarget" class="goal-target">🎯 아빠 이기기 (450점)</div>
+    <div id="goalReward" class="goal-reward">🎁 보상: 아이스크림</div>
+  </div>
+  <button id="btnStart" class="btn-start" onclick="initAudio(); isPracticeMode = false; showScreen('name')">게임 시작</button>
+  <button id="btnPractice" class="btn-practice" onclick="startPractice()">연습 모드</button>
+  <button id="btnRankTitle" class="btn-rank" onclick="showLeaderboard()">🏆 랭킹 보기</button>
+  <div class="bottom-buttons">
+    <button id="btnGoal" class="btn-goal" onclick="showGoalModal()">🎁 목표 설정</button>
+    <button id="btnHow" class="btn-how" onclick="showHowToPlay()">게임 방법</button>
+  </div>
+</div>
+
+<!-- 게임 방법 모달 -->
+<div id="modal-how" class="modal-overlay hidden" onclick="closeHowToPlay()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div id="modalTitle" class="modal-title">🎮 게임 방법</div>
+    <div id="modalText" class="modal-text"></div>
+    <button id="modalClose" class="modal-close" onclick="closeHowToPlay()">확인</button>
+  </div>
+</div>
+
+<!-- 목표 설정 모달 -->
+<div id="modal-goal" class="modal-overlay hidden" onclick="closeGoalModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <div id="goalModalTitle" class="modal-title">🎁 목표 설정</div>
+    <div class="goal-form">
+      <label id="goalTypeLabel" class="goal-label">목표 유형</label>
+      <select id="goalType" class="goal-select" onchange="toggleGoalType()">
+        <option value="score" id="optScore">목표 점수 달성</option>
+        <option value="beat" id="optBeat">누군가 이기기</option>
+      </select>
+      
+      <div id="beatFields" class="hidden">
+        <div class="goal-row">
+          <div>
+            <label id="targetNameLabel" class="goal-label">이길 사람</label>
+            <input type="text" id="targetName" class="goal-input" maxlength="10">
+          </div>
+          <div>
+            <label id="theirScoreLabel" class="goal-label">그 사람 점수</label>
+            <input type="number" id="theirScore" class="goal-input" min="1" max="999">
+          </div>
+        </div>
+      </div>
+      
+      <div id="scoreFields">
+        <label id="targetScoreLabel" class="goal-label">목표 점수</label>
+        <input type="number" id="targetScore" class="goal-input" min="1" max="999" placeholder="예: 500">
+      </div>
+      
+      <label id="rewardLabel" class="goal-label">🎁 보상</label>
+      <input type="text" id="rewardInput" class="goal-input" maxlength="30">
+      
+      <div class="goal-buttons">
+        <button id="btnDeleteGoal" class="btn-delete-goal" onclick="deleteGoal()">삭제</button>
+        <button id="btnSaveGoal" class="btn-save-goal" onclick="saveGoal()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 이름 입력 -->
+<div id="screen-name" class="container hidden">
+  <div class="lang-selector">
+    <button class="lang-btn active" onclick="setLang('ko')">한국어</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" onclick="setLang('zh')">中文</button>
+    <button class="lang-btn" onclick="setLang('es')">ES</button>
+    <button class="lang-btn" onclick="setLang('pt')">PT</button>
+    <button class="lang-btn" onclick="setLang('ru')">RU</button>
+    <button class="lang-btn" onclick="setLang('fr')">FR</button>
+    <button class="lang-btn" onclick="setLang('de')">DE</button>
+    <button class="lang-btn" onclick="setLang('ja')">日本語</button>
+    <button class="lang-btn" onclick="setLang('vi')">VI</button>
+    <button class="lang-btn" onclick="setLang('tr')">TR</button>
+    <button class="lang-btn" onclick="setLang('th')">TH</button>
+    <button class="lang-btn" onclick="setLang('id')">ID</button>
+  </div>
+  <h2 id="nameLabel" class="name-label">이름을 입력하세요</h2>
+  <input type="text" id="nameInput" class="name-input" maxlength="10" placeholder="">
+  <button id="btnGo" class="btn-go" disabled onclick="startGame()">시작하기</button>
+  <button id="btnHomeName" class="btn-home" onclick="showScreen('title')">🏠 홈으로</button>
+</div>
+
+<!-- 라운드 전환 화면 -->
+<div id="screen-round" class="round-screen hidden">
+  <div id="roundDisplay" class="round-number">1</div>
+  <div id="roundText" class="round-text">라운드 시작!</div>
+</div>
+
+<!-- 게임 화면 -->
+<div id="screen-game" class="container hidden">
+  <div class="game-area">
+    <div id="playerDisplay" class="player-display"></div>
+    <div class="game-header">
+      <div><span id="roundLabel">라운드</span> <span id="roundNum" class="hl-orange">1</span>/3</div>
+      <div class="score-container" id="scoreContainer">
+        <span id="scoreNum" class="score-text">0</span><span id="scorePts" class="score-text">점</span>
+      </div>
+      <div><span id="questionLabel">문제</span> <span id="questionNum" class="hl-yellow">1</span>/10</div>
+    </div>
+
+    <div class="timer-bar">
+      <div id="timerFill" class="timer-fill bonus10" style="width:100%;"></div>
+    </div>
+    <div class="question-box">
+      <div id="bonusFloat" class="bonus-float">+10</div>
+      <div id="particles" class="particles"></div>
+      <div class="q-problem">
+        <span id="num1" class="q-num1">7</span> × <span id="num2" class="q-num2">8</span>
+      </div>
+      <div class="q-mark">= ?</div>
+    </div>
+    <div class="options">
+      <button id="opt0" class="opt-btn" onclick="selectAnswer(0)">56</button>
+      <button id="opt1" class="opt-btn" onclick="selectAnswer(1)">54</button>
+      <button id="opt2" class="opt-btn" onclick="selectAnswer(2)">63</button>
+      <button id="opt3" class="opt-btn" onclick="selectAnswer(3)">48</button>
+    </div>
+    <button id="btnQuit" class="btn-quit hidden" onclick="quitPractice()">그만두기</button>
+  </div>
+</div>
+
+<!-- 결과 화면 -->
+<div id="screen-result" class="container hidden">
+  <div id="resultEmoji" class="result-emoji">🎉</div>
+  <div id="resultTitle" class="result-title win">축하합니다!</div>
+  <div style="color:#888"><span id="resultName">플레이어</span><span id="resultNameSuffix">님의 점수</span></div>
+  <div id="resultScore" class="result-score">300점</div>
+  <div id="resultBest" class="result-best hidden">🎉 새로운 최고 기록!</div>
+  <div id="resultStats" class="result-stats">정답: 30/30 | 정답률: 100%</div>
+  
+  <div id="goalResult" class="goal-result hidden">
+    <div id="goalResultTitle" class="goal-result-title">🎉 목표 달성!</div>
+    <div id="goalResultName" class="goal-result-name"></div>
+    <div id="goalResultReward" class="goal-result-reward">🎁 아이스크림</div>
+    <div id="goalResultSub" class="goal-result-sub">보상을 받으세요!</div>
+    <button id="btnShare" class="btn-share hidden" onclick="shareResult()">📤 공유하기</button>
+  </div>
+  
+  <div id="resultMsg" class="result-msg"></div>
+  <div>
+    <button id="btnRetry" class="btn-retry" onclick="restartGame()">다시 하기</button>
+    <button id="btnRankResult" class="btn-board" onclick="showLeaderboard()">🏆 랭킹</button>
+  </div>
+  <button id="btnHomeResult" class="btn-home" onclick="showScreen('title')">🏠 홈으로</button>
+</div>
+
+<!-- 리더보드 -->
+<div id="screen-board" class="container hidden">
+  <h2 id="boardTitle" style="margin-bottom:30px">🏆 랭킹</h2>
+  <div id="boardList" class="board-list"></div>
+  <button id="btnBack" class="btn-back" onclick="showScreen('title')">돌아가기</button>
+</div>
+
+<script>
+// ===== 다국어 =====
+const LANG = {
+  ko: {
+    title: '곱하기 마스터',
+    subtitle: '구구단부터 19단까지!',
+    bestRecord: '최고 기록',
+    pts: '점',
+    start: '게임 시작',
+    howTo: '게임 방법',
+    ranking: '랭킹 보기',
+    goal: '🎁 목표 설정',
+    enterName: '이름을 입력하세요',
+    namePlaceholder: '이름',
+    go: '시작하기',
+    roundStart: '라운드 시작!',
+    round: '라운드',
+    question: '문제',
+    congrats: '축하합니다!',
+    gameOver: '게임 오버',
+    yourScore: '님의 점수',
+    newBest: '🎉 새로운 최고 기록!',
+    correct: '정답',
+    accuracy: '정답률',
+    retry: '다시 하기',
+    back: '돌아가기',
+    noRecords: '아직 기록이 없습니다',
+    modalTitle: '🎮 게임 방법',
+    modalText: `<strong>📌 규칙</strong><br>• 3라운드, 각 라운드 10문제<br>• 라운드가 올라갈수록 어려워져요!<br>• 틀리거나 시간 초과 시 게임 오버<br><br><strong>📊 라운드별 난이도</strong><br>• 1라운드: 2~9단 (5초)<br>• 2라운드: 11~15단 (10초)<br>• 3라운드: 16~19단 (10초)<br><br><strong>⏱️ 시간 보너스</strong><br>• <span class="gold">빠른 정답: +20점</span><br>• 보통: +15점<br>• 그 외: +10점`,
+    modalClose: '확인',
+    msg1: '🔥 곱하기 천재!',
+    msg2: '⭐ 놀라운 실력!',
+    msg3: '👏 대단해요!',
+    msg4: '👍 잘했어요!',
+    r1: '2~9단 | 5초',
+    r2: '11~15단 | 10초',
+    r3: '16~19단 | 10초',
+    goalTitle: '🎁 목표 설정',
+    goalType: '목표 유형',
+    goalScore: '목표 점수 달성',
+    goalBeat: '누군가 이기기',
+    targetScore: '목표 점수',
+    targetName: '이길 사람',
+    targetNamePh: '예: 아빠',
+    theirScore: '그 사람 점수',
+    reward: '🎁 보상',
+    rewardPh: '예: 아이스크림, 장난감...',
+    saveGoal: '저장',
+    deleteGoal: '삭제',
+    currentGoal: '🎯 목표',
+    beatGoal: '{name} 이기기 ({score}점)',
+    scoreGoal: '{score}점 달성',
+    rewardLabel: '보상: {reward}',
+    goalAchieved: '🎉 목표 달성!',
+    getReward: '보상을 받으세요!',
+    goalNotYet: '😢 아쉬워요!',
+    tryAgain: '조금만 더 노력해봐요!',
+    needed: '필요: {score}점',
+    home: '🏠 홈으로',
+    practice: '연습 모드',
+    practiceResult: '연습 결과',
+    practiceCorrect: '정답',
+    practiceWrong: '오답',
+    quit: '그만두기',
+    continue: '계속하기',
+    share: '📤 공유하기',
+    shareMsg: '🎉 {name}님이 곱하기 마스터에서 {score}점으로 목표를 달성했어요! 보상: {reward}',
+  },
+  en: {
+    title: 'Multiplication Master',
+    subtitle: 'From 2x to 19x tables!',
+    bestRecord: 'Best Score',
+    pts: 'pts',
+    start: 'Start Game',
+    howTo: 'How to Play',
+    ranking: 'Ranking',
+    goal: '🎁 Set Goal',
+    enterName: 'Enter your name',
+    namePlaceholder: 'Name',
+    go: 'Start',
+    roundStart: 'Round Start!',
+    round: 'Round',
+    question: 'Q',
+    congrats: 'Congratulations!',
+    gameOver: 'Game Over',
+    yourScore: "'s Score",
+    newBest: '🎉 New Best Score!',
+    correct: 'Correct',
+    accuracy: 'Accuracy',
+    retry: 'Retry',
+    back: 'Back',
+    noRecords: 'No records yet',
+    modalTitle: '🎮 How to Play',
+    modalText: `<strong>📌 Rules</strong><br>• 3 rounds, 10 questions each<br>• Gets harder each round!<br>• Game over if wrong or time out<br><br><strong>📊 Difficulty by Round</strong><br>• Round 1: 2-9 times (5s)<br>• Round 2: 11-15 times (10s)<br>• Round 3: 16-19 times (10s)<br><br><strong>⏱️ Time Bonus</strong><br>• <span class="gold">Fast answer: +20pts</span><br>• Normal: +15pts<br>• Otherwise: +10pts`,
+    modalClose: 'OK',
+    msg1: '🔥 Multiplication Genius!',
+    msg2: '⭐ Amazing!',
+    msg3: '👏 Great job!',
+    msg4: '👍 Good!',
+    r1: '2-9x | 5s',
+    r2: '11-15x | 10s',
+    r3: '16-19x | 10s',
+    goalTitle: '🎁 Set Goal',
+    goalType: 'Goal Type',
+    goalScore: 'Reach Score',
+    goalBeat: 'Beat Someone',
+    targetScore: 'Target Score',
+    targetName: 'Who to Beat',
+    targetNamePh: 'e.g. Dad',
+    theirScore: 'Their Score',
+    reward: '🎁 Reward',
+    rewardPh: 'e.g. Ice cream, toy...',
+    saveGoal: 'Save',
+    deleteGoal: 'Delete',
+    currentGoal: '🎯 Goal',
+    beatGoal: 'Beat {name} ({score}pts)',
+    scoreGoal: 'Reach {score}pts',
+    rewardLabel: 'Reward: {reward}',
+    goalAchieved: '🎉 Goal Achieved!',
+    getReward: 'Claim your reward!',
+    goalNotYet: '😢 Not yet!',
+    tryAgain: 'Try again!',
+    needed: 'Need: {score}pts',
+    home: '🏠 Home',
+    practice: 'Practice Mode',
+    practiceResult: 'Practice Result',
+    practiceCorrect: 'Correct',
+    practiceWrong: 'Wrong',
+    quit: 'Quit',
+    continue: 'Continue',
+    share: '📤 Share',
+    shareMsg: '🎉 {name} achieved the goal with {score}pts in Multiplication Master! Reward: {reward}',
+  },
+  zh: {
+    title: '乘法大师',
+    subtitle: '从九九乘法到19段!',
+    bestRecord: '最高分',
+    pts: '分',
+    start: '开始游戏',
+    howTo: '游戏规则',
+    ranking: '排行榜',
+    goal: '🎁 设定目标',
+    enterName: '请输入名字',
+    namePlaceholder: '名字',
+    go: '开始',
+    roundStart: '回合开始!',
+    round: '回合',
+    question: '题目',
+    congrats: '恭喜你!',
+    gameOver: '游戏结束',
+    yourScore: '的分数',
+    newBest: '🎉 新纪录!',
+    correct: '正确',
+    accuracy: '正确率',
+    retry: '再玩一次',
+    back: '返回',
+    noRecords: '暂无记录',
+    modalTitle: '🎮 游戏规则',
+    modalText: `<strong>📌 规则</strong><br>• 3回合，每回合10题<br>• 难度逐回合增加!<br>• 答错或超时则游戏结束<br><br><strong>📊 回合难度</strong><br>• 第1回合: 2-9段 (5秒)<br>• 第2回合: 11-15段 (10秒)<br>• 第3回合: 16-19段 (10秒)<br><br><strong>⏱️ 时间奖励</strong><br>• <span class="gold">快速答对: +20分</span><br>• 普通: +15分<br>• 其他: +10分`,
+    modalClose: '确定',
+    msg1: '🔥 乘法天才!',
+    msg2: '⭐ 太厉害了!',
+    msg3: '👏 很棒!',
+    msg4: '👍 不错!',
+    r1: '2-9段 | 5秒',
+    r2: '11-15段 | 10秒',
+    r3: '16-19段 | 10秒',
+    goalTitle: '🎁 设定目标',
+    goalType: '目标类型',
+    goalScore: '达到分数',
+    goalBeat: '打败某人',
+    targetScore: '目标分数',
+    targetName: '要打败的人',
+    targetNamePh: '例如: 爸爸',
+    theirScore: '他们的分数',
+    reward: '🎁 奖励',
+    rewardPh: '例如: 冰淇淋, 玩具...',
+    saveGoal: '保存',
+    deleteGoal: '删除',
+    currentGoal: '🎯 目标',
+    beatGoal: '打败 {name} ({score}分)',
+    scoreGoal: '达到 {score}分',
+    rewardLabel: '奖励: {reward}',
+    goalAchieved: '🎉 目标达成!',
+    getReward: '领取你的奖励吧!',
+    goalNotYet: '😢 还差一点!',
+    tryAgain: '再努力一下!',
+    needed: '需要: {score}分',
+    home: '🏠 首页',
+    practice: '练习模式',
+    practiceResult: '练习结果',
+    practiceCorrect: '正确',
+    practiceWrong: '错误',
+    quit: '退出',
+    continue: '继续',
+    share: '📤 分享',
+    shareMsg: '🎉 {name}在乘法大师中以{score}分达成目标！奖励：{reward}',
+  },
+  ja: {
+    title: '掛け算マスター',
+    subtitle: '九九から19の段まで!',
+    bestRecord: 'ハイスコア',
+    pts: '点',
+    start: 'ゲーム開始',
+    howTo: '遊び方',
+    ranking: 'ランキング',
+    goal: '🎁 目標設定',
+    enterName: '名前を入力',
+    namePlaceholder: '名前',
+    go: 'スタート',
+    roundStart: 'ラウンド開始!',
+    round: 'ラウンド',
+    question: '問題',
+    congrats: 'おめでとう!',
+    gameOver: 'ゲームオーバー',
+    yourScore: 'のスコア',
+    newBest: '🎉 新記録!',
+    correct: '正解',
+    accuracy: '正解率',
+    retry: 'もう一度',
+    back: '戻る',
+    noRecords: '記録がありません',
+    modalTitle: '🎮 遊び方',
+    modalText: `<strong>📌 ルール</strong><br>• 3ラウンド、各10問<br>• ラウンドが上がると難しくなる!<br>• 間違いまたは時間切れでゲームオーバー<br><br><strong>📊 ラウンド別難易度</strong><br>• ラウンド1: 2-9の段 (5秒)<br>• ラウンド2: 11-15の段 (10秒)<br>• ラウンド3: 16-19の段 (10秒)<br><br><strong>⏱️ タイムボーナス</strong><br>• <span class="gold">速い正解: +20点</span><br>• 普通: +15点<br>• その他: +10点`,
+    modalClose: 'OK',
+    msg1: '🔥 掛け算の天才!',
+    msg2: '⭐ すごい!',
+    msg3: '👏 素晴らしい!',
+    msg4: '👍 いいね!',
+    r1: '2-9の段 | 5秒',
+    r2: '11-15の段 | 10秒',
+    r3: '16-19の段 | 10秒',
+    goalTitle: '🎁 目標設定',
+    goalType: '目標タイプ',
+    goalScore: 'スコア達成',
+    goalBeat: '誰かに勝つ',
+    targetScore: '目標スコア',
+    targetName: '勝つ相手',
+    targetNamePh: '例: パパ',
+    theirScore: '相手のスコア',
+    reward: '🎁 ご褒美',
+    rewardPh: '例: アイス, おもちゃ...',
+    saveGoal: '保存',
+    deleteGoal: '削除',
+    currentGoal: '🎯 目標',
+    beatGoal: '{name}に勝つ ({score}点)',
+    scoreGoal: '{score}点達成',
+    rewardLabel: 'ご褒美: {reward}',
+    goalAchieved: '🎉 目標達成!',
+    getReward: 'ご褒美をもらおう!',
+    goalNotYet: '😢 もう少し!',
+    tryAgain: 'もう一回頑張ろう!',
+    needed: '必要: {score}点',
+    home: '🏠 ホーム',
+    practice: '練習モード',
+    practiceResult: '練習結果',
+    practiceCorrect: '正解',
+    practiceWrong: '不正解',
+    quit: 'やめる',
+    continue: '続ける',
+    share: '📤 共有',
+    shareMsg: '🎉 {name}さんが掛け算マスターで{score}点で目標達成！ご褒美：{reward}',
+  },
+  vi: {
+    title: 'Bậc Thầy Nhân',
+    subtitle: 'Từ bảng cửu chương đến 19!',
+    bestRecord: 'Điểm cao nhất',
+    pts: 'đ',
+    start: 'Bắt đầu',
+    howTo: 'Hướng dẫn',
+    ranking: 'Xếp hạng',
+    goal: '🎁 Đặt mục tiêu',
+    enterName: 'Nhập tên của bạn',
+    namePlaceholder: 'Tên',
+    go: 'Chơi',
+    roundStart: 'Bắt đầu vòng!',
+    round: 'Vòng',
+    question: 'Câu',
+    congrats: 'Chúc mừng!',
+    gameOver: 'Kết thúc',
+    yourScore: ' - Điểm',
+    newBest: '🎉 Kỷ lục mới!',
+    correct: 'Đúng',
+    accuracy: 'Độ chính xác',
+    retry: 'Chơi lại',
+    back: 'Quay lại',
+    noRecords: 'Chưa có kỷ lục',
+    modalTitle: '🎮 Hướng dẫn',
+    modalText: `<strong>📌 Luật chơi</strong><br>• 3 vòng, mỗi vòng 10 câu<br>• Vòng sau khó hơn!<br>• Sai hoặc hết giờ sẽ thua<br><br><strong>📊 Độ khó theo vòng</strong><br>• Vòng 1: 2-9 (5s)<br>• Vòng 2: 11-15 (10s)<br>• Vòng 3: 16-19 (10s)<br><br><strong>⏱️ Thưởng thời gian</strong><br>• <span class="gold">Nhanh: +20đ</span><br>• Bình thường: +15đ<br>• Còn lại: +10đ`,
+    modalClose: 'OK',
+    msg1: '🔥 Thiên tài nhân!',
+    msg2: '⭐ Tuyệt vời!',
+    msg3: '👏 Giỏi lắm!',
+    msg4: '👍 Tốt!',
+    r1: '2-9 | 5s',
+    r2: '11-15 | 10s',
+    r3: '16-19 | 10s',
+    goalTitle: '🎁 Đặt mục tiêu',
+    goalType: 'Loại mục tiêu',
+    goalScore: 'Đạt điểm',
+    goalBeat: 'Đánh bại ai đó',
+    targetScore: 'Điểm mục tiêu',
+    targetName: 'Người cần thắng',
+    targetNamePh: 'VD: Bố',
+    theirScore: 'Điểm của họ',
+    reward: '🎁 Phần thưởng',
+    rewardPh: 'VD: Kem, đồ chơi...',
+    saveGoal: 'Lưu',
+    deleteGoal: 'Xóa',
+    currentGoal: '🎯 Mục tiêu',
+    beatGoal: 'Thắng {name} ({score}đ)',
+    scoreGoal: 'Đạt {score}đ',
+    rewardLabel: 'Thưởng: {reward}',
+    goalAchieved: '🎉 Đạt mục tiêu!',
+    getReward: 'Nhận thưởng nào!',
+    goalNotYet: '😢 Chưa được!',
+    tryAgain: 'Cố gắng thêm nhé!',
+    needed: 'Cần: {score}đ',
+    home: '🏠 Trang chủ',
+    practice: 'Chế độ luyện tập',
+    practiceResult: 'Kết quả luyện tập',
+    practiceCorrect: 'Đúng',
+    practiceWrong: 'Sai',
+    quit: 'Thoát',
+    continue: 'Tiếp tục',
+    share: '📤 Chia sẻ',
+    shareMsg: '🎉 {name} đã đạt mục tiêu với {score} điểm trong Multiplication Master! Phần thưởng: {reward}',
+  },
+  es: {
+    title: 'Maestro Multiplicación',
+    subtitle: '¡Desde 2x hasta 19x!',
+    bestRecord: 'Mejor Puntuación',
+    pts: 'pts',
+    start: 'Iniciar Juego',
+    howTo: 'Cómo Jugar',
+    ranking: 'Ranking',
+    goal: '🎁 Meta',
+    enterName: 'Ingresa tu nombre',
+    namePlaceholder: 'Nombre',
+    go: 'Comenzar',
+    roundStart: '¡Comienza la Ronda!',
+    round: 'Ronda',
+    question: 'P',
+    congrats: '¡Felicidades!',
+    gameOver: 'Fin del Juego',
+    yourScore: ' - Puntuación',
+    newBest: '🎉 ¡Nuevo Récord!',
+    correct: 'Correctas',
+    accuracy: 'Precisión',
+    retry: 'Reintentar',
+    back: 'Volver',
+    noRecords: 'Sin récords aún',
+    modalTitle: '🎮 Cómo Jugar',
+    modalText: `<strong>📌 Reglas</strong><br>• 3 rondas, 10 preguntas cada una<br>• ¡Cada ronda es más difícil!<br>• Error o tiempo agotado = fin del juego<br><br><strong>📊 Dificultad por Ronda</strong><br>• Ronda 1: 2-9 (5s)<br>• Ronda 2: 11-15 (10s)<br>• Ronda 3: 16-19 (10s)<br><br><strong>⏱️ Bonificación por Tiempo</strong><br>• <span class="gold">Rápido: +20pts</span><br>• Normal: +15pts<br>• Otro: +10pts`,
+    modalClose: 'OK',
+    msg1: '🔥 ¡Genio!',
+    msg2: '⭐ ¡Increíble!',
+    msg3: '👏 ¡Muy bien!',
+    msg4: '👍 ¡Bien!',
+    r1: '2-9 | 5s',
+    r2: '11-15 | 10s',
+    r3: '16-19 | 10s',
+    goalTitle: '🎁 Establecer Meta',
+    goalType: 'Tipo de Meta',
+    goalScore: 'Alcanzar Puntos',
+    goalBeat: 'Vencer a Alguien',
+    targetScore: 'Puntos Objetivo',
+    targetName: 'A Quién Vencer',
+    targetNamePh: 'Ej: Papá',
+    theirScore: 'Su Puntuación',
+    reward: '🎁 Premio',
+    rewardPh: 'Ej: Helado, juguete...',
+    saveGoal: 'Guardar',
+    deleteGoal: 'Eliminar',
+    currentGoal: '🎯 Meta',
+    beatGoal: 'Vencer a {name} ({score}pts)',
+    scoreGoal: 'Alcanzar {score}pts',
+    rewardLabel: 'Premio: {reward}',
+    goalAchieved: '🎉 ¡Meta Lograda!',
+    getReward: '¡Reclama tu premio!',
+    goalNotYet: '😢 ¡Casi!',
+    tryAgain: '¡Inténtalo de nuevo!',
+    needed: 'Necesitas: {score}pts',
+    home: '🏠 Inicio',
+    practice: 'Modo Práctica',
+    practiceResult: 'Resultado de Práctica',
+    practiceCorrect: 'Correctas',
+    practiceWrong: 'Incorrectas',
+    quit: 'Salir',
+    continue: 'Continuar',
+    share: '📤 Compartir',
+    shareMsg: '🎉 ¡{name} logró la meta con {score}pts en Multiplication Master! Recompensa: {reward}',
+  },
+  fr: {
+    title: 'Maître Multiplication',
+    subtitle: 'De 2x à 19x!',
+    bestRecord: 'Meilleur Score',
+    pts: 'pts',
+    start: 'Commencer',
+    howTo: 'Comment Jouer',
+    ranking: 'Classement',
+    goal: '🎁 Objectif',
+    enterName: 'Entrez votre nom',
+    namePlaceholder: 'Nom',
+    go: 'Jouer',
+    roundStart: 'Début du Tour!',
+    round: 'Tour',
+    question: 'Q',
+    congrats: 'Félicitations!',
+    gameOver: 'Fin de Partie',
+    yourScore: ' - Score',
+    newBest: '🎉 Nouveau Record!',
+    correct: 'Correct',
+    accuracy: 'Précision',
+    retry: 'Rejouer',
+    back: 'Retour',
+    noRecords: 'Pas encore de records',
+    modalTitle: '🎮 Comment Jouer',
+    modalText: `<strong>📌 Règles</strong><br>• 3 tours, 10 questions chacun<br>• Chaque tour est plus difficile!<br>• Erreur ou temps écoulé = fin de partie<br><br><strong>📊 Difficulté par Tour</strong><br>• Tour 1: 2-9 (5s)<br>• Tour 2: 11-15 (10s)<br>• Tour 3: 16-19 (10s)<br><br><strong>⏱️ Bonus de Temps</strong><br>• <span class="gold">Rapide: +20pts</span><br>• Normal: +15pts<br>• Autre: +10pts`,
+    modalClose: 'OK',
+    msg1: '🔥 Génie!',
+    msg2: '⭐ Incroyable!',
+    msg3: '👏 Très bien!',
+    msg4: '👍 Bien!',
+    r1: '2-9 | 5s',
+    r2: '11-15 | 10s',
+    r3: '16-19 | 10s',
+    goalTitle: '🎁 Définir Objectif',
+    goalType: "Type d'Objectif",
+    goalScore: 'Atteindre Score',
+    goalBeat: 'Battre Quelqu\'un',
+    targetScore: 'Score Cible',
+    targetName: 'Qui Battre',
+    targetNamePh: 'Ex: Papa',
+    theirScore: 'Leur Score',
+    reward: '🎁 Récompense',
+    rewardPh: 'Ex: Glace, jouet...',
+    saveGoal: 'Sauver',
+    deleteGoal: 'Supprimer',
+    currentGoal: '🎯 Objectif',
+    beatGoal: 'Battre {name} ({score}pts)',
+    scoreGoal: 'Atteindre {score}pts',
+    rewardLabel: 'Récompense: {reward}',
+    goalAchieved: '🎉 Objectif Atteint!',
+    getReward: 'Réclamez votre récompense!',
+    goalNotYet: '😢 Presque!',
+    tryAgain: 'Réessayez!',
+    needed: 'Besoin: {score}pts',
+    home: '🏠 Accueil',
+    practice: 'Mode Entraînement',
+    practiceResult: 'Résultat de l\'Entraînement',
+    practiceCorrect: 'Correct',
+    practiceWrong: 'Incorrect',
+    quit: 'Quitter',
+    continue: 'Continuer',
+    share: '📤 Partager',
+    shareMsg: '🎉 {name} a atteint l\'objectif avec {score}pts dans Multiplication Master! Récompense: {reward}',
+  },
+  de: {
+    title: 'Multiplikations-Meister',
+    subtitle: 'Von 2x bis 19x!',
+    bestRecord: 'Highscore',
+    pts: 'Pkt',
+    start: 'Spiel Starten',
+    howTo: 'Anleitung',
+    ranking: 'Rangliste',
+    goal: '🎁 Ziel setzen',
+    enterName: 'Name eingeben',
+    namePlaceholder: 'Name',
+    go: 'Start',
+    roundStart: 'Runde Start!',
+    round: 'Runde',
+    question: 'Fr',
+    congrats: 'Glückwunsch!',
+    gameOver: 'Spiel Vorbei',
+    yourScore: ' - Punkte',
+    newBest: '🎉 Neuer Rekord!',
+    correct: 'Richtig',
+    accuracy: 'Genauigkeit',
+    retry: 'Nochmal',
+    back: 'Zurück',
+    noRecords: 'Noch keine Rekorde',
+    modalTitle: '🎮 Anleitung',
+    modalText: `<strong>📌 Regeln</strong><br>• 3 Runden, je 10 Fragen<br>• Jede Runde wird schwieriger!<br>• Fehler oder Zeit vorbei = Spiel Ende<br><br><strong>📊 Schwierigkeit pro Runde</strong><br>• Runde 1: 2-9 (5s)<br>• Runde 2: 11-15 (10s)<br>• Runde 3: 16-19 (10s)<br><br><strong>⏱️ Zeitbonus</strong><br>• <span class="gold">Schnell: +20Pkt</span><br>• Normal: +15Pkt<br>• Sonst: +10Pkt`,
+    modalClose: 'OK',
+    msg1: '🔥 Genie!',
+    msg2: '⭐ Unglaublich!',
+    msg3: '👏 Sehr gut!',
+    msg4: '👍 Gut!',
+    r1: '2-9 | 5s',
+    r2: '11-15 | 10s',
+    r3: '16-19 | 10s',
+    goalTitle: '🎁 Ziel Setzen',
+    goalType: 'Zieltyp',
+    goalScore: 'Punkte Erreichen',
+    goalBeat: 'Jemanden Schlagen',
+    targetScore: 'Zielpunkte',
+    targetName: 'Wen Schlagen',
+    targetNamePh: 'z.B. Papa',
+    theirScore: 'Deren Punkte',
+    reward: '🎁 Belohnung',
+    rewardPh: 'z.B. Eis, Spielzeug...',
+    saveGoal: 'Speichern',
+    deleteGoal: 'Löschen',
+    currentGoal: '🎯 Ziel',
+    beatGoal: '{name} schlagen ({score}Pkt)',
+    scoreGoal: '{score}Pkt erreichen',
+    rewardLabel: 'Belohnung: {reward}',
+    goalAchieved: '🎉 Ziel Erreicht!',
+    getReward: 'Hol dir deine Belohnung!',
+    goalNotYet: '😢 Knapp!',
+    tryAgain: 'Versuch es nochmal!',
+    needed: 'Brauchst: {score}Pkt',
+    home: '🏠 Start',
+    practice: 'Übungsmodus',
+    practiceResult: 'Übungsergebnis',
+    practiceCorrect: 'Richtig',
+    practiceWrong: 'Falsch',
+    quit: 'Beenden',
+    continue: 'Weiter',
+    share: '📤 Teilen',
+    shareMsg: '🎉 {name} hat das Ziel mit {score}Pkt in Multiplication Master erreicht! Belohnung: {reward}',
+  },
+  id: {
+    title: 'Master Perkalian',
+    subtitle: 'Dari 2x sampai 19x!',
+    bestRecord: 'Skor Tertinggi',
+    pts: 'poin',
+    start: 'Mulai',
+    howTo: 'Cara Bermain',
+    ranking: 'Peringkat',
+    goal: '🎁 Atur Target',
+    enterName: 'Masukkan nama',
+    namePlaceholder: 'Nama',
+    go: 'Main',
+    roundStart: 'Ronde Mulai!',
+    round: 'Ronde',
+    question: 'Soal',
+    congrats: 'Selamat!',
+    gameOver: 'Game Over',
+    yourScore: ' - Skor',
+    newBest: '🎉 Rekor Baru!',
+    correct: 'Benar',
+    accuracy: 'Akurasi',
+    retry: 'Ulangi',
+    back: 'Kembali',
+    noRecords: 'Belum ada rekor',
+    modalTitle: '🎮 Cara Bermain',
+    modalText: `<strong>📌 Aturan</strong><br>• 3 ronde, masing-masing 10 soal<br>• Setiap ronde lebih sulit!<br>• Salah atau waktu habis = game over<br><br><strong>📊 Tingkat Kesulitan</strong><br>• Ronde 1: 2-9 (5d)<br>• Ronde 2: 11-15 (10d)<br>• Ronde 3: 16-19 (10d)<br><br><strong>⏱️ Bonus Waktu</strong><br>• <span class="gold">Cepat: +20poin</span><br>• Normal: +15poin<br>• Lainnya: +10poin`,
+    modalClose: 'OK',
+    msg1: '🔥 Jenius!',
+    msg2: '⭐ Luar Biasa!',
+    msg3: '👏 Bagus Sekali!',
+    msg4: '👍 Bagus!',
+    r1: '2-9 | 5d',
+    r2: '11-15 | 10d',
+    r3: '16-19 | 10d',
+    goalTitle: '🎁 Atur Target',
+    goalType: 'Jenis Target',
+    goalScore: 'Capai Skor',
+    goalBeat: 'Kalahkan Seseorang',
+    targetScore: 'Target Skor',
+    targetName: 'Siapa yang Dikalahkan',
+    targetNamePh: 'Cth: Ayah',
+    theirScore: 'Skor Mereka',
+    reward: '🎁 Hadiah',
+    rewardPh: 'Cth: Es krim, mainan...',
+    saveGoal: 'Simpan',
+    deleteGoal: 'Hapus',
+    currentGoal: '🎯 Target',
+    beatGoal: 'Kalahkan {name} ({score}poin)',
+    scoreGoal: 'Capai {score}poin',
+    rewardLabel: 'Hadiah: {reward}',
+    goalAchieved: '🎉 Target Tercapai!',
+    getReward: 'Ambil hadiahmu!',
+    goalNotYet: '😢 Belum berhasil!',
+    tryAgain: 'Coba lagi!',
+    needed: 'Perlu: {score}poin',
+    home: '🏠 Beranda',
+    practice: 'Mode Latihan',
+    practiceResult: 'Hasil Latihan',
+    practiceCorrect: 'Benar',
+    practiceWrong: 'Salah',
+    quit: 'Keluar',
+    continue: 'Lanjut',
+    share: '📤 Bagikan',
+    shareMsg: '🎉 {name} mencapai target dengan {score}poin di Multiplication Master! Hadiah: {reward}',
+  },
+  pt: {
+    title: 'Mestre da Multiplicação',
+    subtitle: 'De 2x até 19x!',
+    bestRecord: 'Recorde',
+    pts: 'pts',
+    start: 'Iniciar',
+    howTo: 'Como Jogar',
+    ranking: 'Ranking',
+    goal: '🎁 Meta',
+    enterName: 'Digite seu nome',
+    namePlaceholder: 'Nome',
+    go: 'Jogar',
+    roundStart: 'Rodada Começa!',
+    round: 'Rodada',
+    question: 'Questão',
+    congrats: 'Parabéns!',
+    gameOver: 'Fim de Jogo',
+    yourScore: ' - Pontuação',
+    newBest: '🎉 Novo Recorde!',
+    correct: 'Corretas',
+    accuracy: 'Precisão',
+    retry: 'Tentar Novamente',
+    back: 'Voltar',
+    noRecords: 'Sem recordes ainda',
+    modalTitle: '🎮 Como Jogar',
+    modalText: `<strong>📌 Regras</strong><br>• 3 rodadas, 10 questões cada<br>• Cada rodada é mais difícil!<br>• Errar ou tempo esgotado = fim<br><br><strong>📊 Dificuldade</strong><br>• Rodada 1: 2-9 (5s)<br>• Rodada 2: 11-15 (10s)<br>• Rodada 3: 16-19 (10s)<br><br><strong>⏱️ Bônus</strong><br>• <span class="gold">Rápido: +20pts</span><br>• Normal: +15pts<br>• Outros: +10pts`,
+    modalClose: 'OK',
+    msg1: '🔥 Gênio!',
+    msg2: '⭐ Incrível!',
+    msg3: '👏 Muito Bom!',
+    msg4: '👍 Bom!',
+    r1: '2-9 | 5s',
+    r2: '11-15 | 10s',
+    r3: '16-19 | 10s',
+    goalTitle: '🎁 Definir Meta',
+    goalType: 'Tipo de Meta',
+    goalScore: 'Alcançar Pontos',
+    goalBeat: 'Vencer Alguém',
+    targetScore: 'Pontuação Alvo',
+    targetName: 'Quem Vencer',
+    targetNamePh: 'Ex: Papai',
+    theirScore: 'Pontos Deles',
+    reward: '🎁 Recompensa',
+    rewardPh: 'Ex: Sorvete, brinquedo...',
+    saveGoal: 'Salvar',
+    deleteGoal: 'Excluir',
+    currentGoal: '🎯 Meta Atual',
+    beatGoal: 'Vencer {name} ({score}pts)',
+    scoreGoal: 'Alcançar {score}pts',
+    rewardLabel: 'Recompensa: {reward}',
+    goalAchieved: '🎉 Meta Alcançada!',
+    getReward: 'Pegue sua recompensa!',
+    goalNotYet: '😢 Ainda não!',
+    tryAgain: 'Tente novamente!',
+    needed: 'Necessário: {score}pts',
+    home: '🏠 Início',
+    practice: 'Modo Treino',
+    practiceResult: 'Resultado do Treino',
+    practiceCorrect: 'Corretas',
+    practiceWrong: 'Erradas',
+    quit: 'Sair',
+    continue: 'Continuar',
+    share: '📤 Compartilhar',
+    shareMsg: '🎉 {name} alcançou a meta com {score}pts no Mestre da Multiplicação! Recompensa: {reward}',
+  },
+  ru: {
+    title: 'Мастер Умножения',
+    subtitle: 'От 2х до 19х!',
+    bestRecord: 'Рекорд',
+    pts: 'очк',
+    start: 'Старт',
+    howTo: 'Правила',
+    ranking: 'Рейтинг',
+    goal: '🎁 Цель',
+    enterName: 'Введите имя',
+    namePlaceholder: 'Имя',
+    go: 'Играть',
+    roundStart: 'Раунд начался!',
+    round: 'Раунд',
+    question: 'Вопрос',
+    congrats: 'Поздравляем!',
+    gameOver: 'Игра окончена',
+    yourScore: ' - Счёт',
+    newBest: '🎉 Новый рекорд!',
+    correct: 'Верно',
+    accuracy: 'Точность',
+    retry: 'Ещё раз',
+    back: 'Назад',
+    noRecords: 'Рекордов пока нет',
+    modalTitle: '🎮 Правила игры',
+    modalText: `<strong>📌 Правила</strong><br>• 3 раунда по 10 вопросов<br>• Каждый раунд сложнее!<br>• Ошибка или время = конец<br><br><strong>📊 Сложность</strong><br>• Раунд 1: 2-9 (5с)<br>• Раунд 2: 11-15 (10с)<br>• Раунд 3: 16-19 (10с)<br><br><strong>⏱️ Бонус</strong><br>• <span class="gold">Быстро: +20очк</span><br>• Обычно: +15очк<br>• Иначе: +10очк`,
+    modalClose: 'OK',
+    msg1: '🔥 Гений!',
+    msg2: '⭐ Потрясающе!',
+    msg3: '👏 Отлично!',
+    msg4: '👍 Хорошо!',
+    r1: '2-9 | 5с',
+    r2: '11-15 | 10с',
+    r3: '16-19 | 10с',
+    goalTitle: '🎁 Установить цель',
+    goalType: 'Тип цели',
+    goalScore: 'Набрать очки',
+    goalBeat: 'Победить кого-то',
+    targetScore: 'Целевой счёт',
+    targetName: 'Кого победить',
+    targetNamePh: 'Напр: Папа',
+    theirScore: 'Их счёт',
+    reward: '🎁 Награда',
+    rewardPh: 'Напр: Мороженое...',
+    saveGoal: 'Сохранить',
+    deleteGoal: 'Удалить',
+    currentGoal: '🎯 Текущая цель',
+    beatGoal: 'Победить {name} ({score}очк)',
+    scoreGoal: 'Набрать {score}очк',
+    rewardLabel: 'Награда: {reward}',
+    goalAchieved: '🎉 Цель достигнута!',
+    getReward: 'Получи награду!',
+    goalNotYet: '😢 Пока нет!',
+    tryAgain: 'Попробуй ещё!',
+    needed: 'Нужно: {score}очк',
+    home: '🏠 Домой',
+    practice: 'Тренировка',
+    practiceResult: 'Результат тренировки',
+    practiceCorrect: 'Верно',
+    practiceWrong: 'Неверно',
+    quit: 'Выход',
+    continue: 'Продолжить',
+    share: '📤 Поделиться',
+    shareMsg: '🎉 {name} достиг цели с {score}очк в Мастере Умножения! Награда: {reward}',
+  },
+  th: {
+    title: 'เซียนคูณเลข',
+    subtitle: 'ตั้งแต่ 2x ถึง 19x!',
+    bestRecord: 'สถิติสูงสุด',
+    pts: 'คะแนน',
+    start: 'เริ่มเกม',
+    howTo: 'วิธีเล่น',
+    ranking: 'อันดับ',
+    goal: '🎁 ตั้งเป้า',
+    enterName: 'ใส่ชื่อของคุณ',
+    namePlaceholder: 'ชื่อ',
+    go: 'เล่น',
+    roundStart: 'รอบเริ่ม!',
+    round: 'รอบ',
+    question: 'ข้อ',
+    congrats: 'ยินดีด้วย!',
+    gameOver: 'จบเกม',
+    yourScore: ' - คะแนน',
+    newBest: '🎉 สถิติใหม่!',
+    correct: 'ถูก',
+    accuracy: 'ความแม่นยำ',
+    retry: 'เล่นอีก',
+    back: 'กลับ',
+    noRecords: 'ยังไม่มีสถิติ',
+    modalTitle: '🎮 วิธีเล่น',
+    modalText: `<strong>📌 กฎ</strong><br>• 3 รอบ รอบละ 10 ข้อ<br>• แต่ละรอบยากขึ้น!<br>• ผิดหรือหมดเวลา = จบ<br><br><strong>📊 ระดับความยาก</strong><br>• รอบ 1: 2-9 (5วิ)<br>• รอบ 2: 11-15 (10วิ)<br>• รอบ 3: 16-19 (10วิ)<br><br><strong>⏱️ โบนัส</strong><br>• <span class="gold">เร็ว: +20คะแนน</span><br>• ปกติ: +15คะแนน<br>• อื่นๆ: +10คะแนน`,
+    modalClose: 'ตกลง',
+    msg1: '🔥 อัจฉริยะ!',
+    msg2: '⭐ เยี่ยมมาก!',
+    msg3: '👏 ดีมาก!',
+    msg4: '👍 ดี!',
+    r1: '2-9 | 5วิ',
+    r2: '11-15 | 10วิ',
+    r3: '16-19 | 10วิ',
+    goalTitle: '🎁 ตั้งเป้าหมาย',
+    goalType: 'ประเภทเป้าหมาย',
+    goalScore: 'ทำคะแนนให้ได้',
+    goalBeat: 'เอาชนะใครสักคน',
+    targetScore: 'คะแนนเป้าหมาย',
+    targetName: 'ชื่อคู่แข่ง',
+    targetNamePh: 'เช่น: พ่อ',
+    theirScore: 'คะแนนเขา',
+    reward: '🎁 รางวัล',
+    rewardPh: 'เช่น: ไอติม, ของเล่น...',
+    saveGoal: 'บันทึก',
+    deleteGoal: 'ลบ',
+    currentGoal: '🎯 เป้าหมาย',
+    beatGoal: 'เอาชนะ {name} ({score}คะแนน)',
+    scoreGoal: 'ทำ {score}คะแนน',
+    rewardLabel: 'รางวัล: {reward}',
+    goalAchieved: '🎉 ทำได้แล้ว!',
+    getReward: 'รับรางวัลเลย!',
+    goalNotYet: '😢 ยังไม่ถึง!',
+    tryAgain: 'ลองอีกครั้ง!',
+    needed: 'ต้องการ: {score}คะแนน',
+    home: '🏠 หน้าหลัก',
+    practice: 'โหมดฝึกซ้อม',
+    practiceResult: 'ผลการฝึก',
+    practiceCorrect: 'ถูก',
+    practiceWrong: 'ผิด',
+    quit: 'ออก',
+    continue: 'ต่อ',
+    share: '📤 แชร์',
+    shareMsg: '🎉 {name} ทำเป้าได้ {score}คะแนน ใน เซียนคูณเลข! รางวัล: {reward}',
+  },
+  tr: {
+    title: 'Çarpım Ustası',
+    subtitle: '2x\'ten 19x\'e kadar!',
+    bestRecord: 'En İyi',
+    pts: 'puan',
+    start: 'Başla',
+    howTo: 'Nasıl Oynanır',
+    ranking: 'Sıralama',
+    goal: '🎁 Hedef',
+    enterName: 'Adınızı girin',
+    namePlaceholder: 'Ad',
+    go: 'Oyna',
+    roundStart: 'Tur Başladı!',
+    round: 'Tur',
+    question: 'Soru',
+    congrats: 'Tebrikler!',
+    gameOver: 'Oyun Bitti',
+    yourScore: ' - Puan',
+    newBest: '🎉 Yeni Rekor!',
+    correct: 'Doğru',
+    accuracy: 'İsabet',
+    retry: 'Tekrar',
+    back: 'Geri',
+    noRecords: 'Henüz rekor yok',
+    modalTitle: '🎮 Nasıl Oynanır',
+    modalText: `<strong>📌 Kurallar</strong><br>• 3 tur, her biri 10 soru<br>• Her tur daha zor!<br>• Yanlış veya süre = bitti<br><br><strong>📊 Zorluk</strong><br>• Tur 1: 2-9 (5sn)<br>• Tur 2: 11-15 (10sn)<br>• Tur 3: 16-19 (10sn)<br><br><strong>⏱️ Bonus</strong><br>• <span class="gold">Hızlı: +20puan</span><br>• Normal: +15puan<br>• Diğer: +10puan`,
+    modalClose: 'Tamam',
+    msg1: '🔥 Dahi!',
+    msg2: '⭐ Harika!',
+    msg3: '👏 Çok İyi!',
+    msg4: '👍 İyi!',
+    r1: '2-9 | 5sn',
+    r2: '11-15 | 10sn',
+    r3: '16-19 | 10sn',
+    goalTitle: '🎁 Hedef Belirle',
+    goalType: 'Hedef Türü',
+    goalScore: 'Puana Ulaş',
+    goalBeat: 'Birini Yen',
+    targetScore: 'Hedef Puan',
+    targetName: 'Kimi Yeneceksin',
+    targetNamePh: 'Örn: Baba',
+    theirScore: 'Onların Puanı',
+    reward: '🎁 Ödül',
+    rewardPh: 'Örn: Dondurma...',
+    saveGoal: 'Kaydet',
+    deleteGoal: 'Sil',
+    currentGoal: '🎯 Hedef',
+    beatGoal: '{name} yen ({score}puan)',
+    scoreGoal: '{score}puana ulaş',
+    rewardLabel: 'Ödül: {reward}',
+    goalAchieved: '🎉 Hedefe Ulaştın!',
+    getReward: 'Ödülünü al!',
+    goalNotYet: '😢 Henüz değil!',
+    tryAgain: 'Tekrar dene!',
+    needed: 'Gereken: {score}puan',
+    home: '🏠 Ana Sayfa',
+    practice: 'Pratik Modu',
+    practiceResult: 'Pratik Sonucu',
+    practiceCorrect: 'Doğru',
+    practiceWrong: 'Yanlış',
+    quit: 'Çık',
+    continue: 'Devam',
+    share: '📤 Paylaş',
+    shareMsg: '🎉 {name} Çarpım Ustası\'nda {score}puan ile hedefe ulaştı! Ödül: {reward}',
+  }
+};
+
+let currentLang = 'ko';
+try {
+  const saved = localStorage.getItem('multiply-lang');
+  if (saved) currentLang = saved;
+} catch(e) {}
+
+function setLang(lang) {
+  currentLang = lang;
+  try { localStorage.setItem('multiply-lang', lang); } catch(e) {}
+  
+  const langNames = { ko: '한국어', en: 'EN', zh: '中文', es: 'ES', pt: 'PT', ru: 'RU', fr: 'FR', de: 'DE', ja: '日本語', vi: 'VI', tr: 'TR', th: 'TH', id: 'ID' };
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === langNames[lang]);
+  });
+  
+  const L = LANG[lang];
+  document.getElementById('titleText').textContent = L.title;
+  document.getElementById('titleSub').textContent = L.subtitle;
+  document.getElementById('bestLabel').textContent = L.bestRecord;
+  document.getElementById('bestPts').textContent = L.pts;
+  document.getElementById('btnStart').textContent = L.start;
+  document.getElementById('btnPractice').textContent = L.practice;
+  document.getElementById('btnQuit').textContent = L.quit;
+  document.getElementById('btnHow').textContent = L.howTo;
+  document.getElementById('btnGoal').textContent = L.goal;
+  document.getElementById('btnRankTitle').textContent = '🏆 ' + L.ranking;
+  document.getElementById('nameLabel').textContent = L.enterName;
+  document.getElementById('nameInput').placeholder = L.namePlaceholder;
+  document.getElementById('btnGo').textContent = L.go;
+  document.getElementById('roundLabel').textContent = L.round;
+  document.getElementById('questionLabel').textContent = L.question;
+  document.getElementById('scorePts').textContent = L.pts;
+  document.getElementById('btnRetry').textContent = L.retry;
+  document.getElementById('btnRankResult').textContent = '🏆 ' + L.ranking;
+  document.getElementById('boardTitle').textContent = '🏆 ' + L.ranking;
+  document.getElementById('btnBack').textContent = L.back;
+  document.getElementById('modalTitle').textContent = L.modalTitle;
+  document.getElementById('modalText').innerHTML = L.modalText;
+  document.getElementById('modalClose').textContent = L.modalClose;
+  
+  // 목표 모달
+  document.getElementById('goalModalTitle').textContent = L.goalTitle;
+  document.getElementById('goalTypeLabel').textContent = L.goalType;
+  document.getElementById('optScore').textContent = L.goalScore;
+  document.getElementById('optBeat').textContent = L.goalBeat;
+  document.getElementById('targetScoreLabel').textContent = L.targetScore;
+  document.getElementById('targetNameLabel').textContent = L.targetName;
+  document.getElementById('targetName').placeholder = L.targetNamePh;
+  document.getElementById('theirScoreLabel').textContent = L.theirScore;
+  document.getElementById('rewardLabel').textContent = L.reward;
+  document.getElementById('rewardInput').placeholder = L.rewardPh;
+  document.getElementById('btnSaveGoal').textContent = L.saveGoal;
+  document.getElementById('btnDeleteGoal').textContent = L.deleteGoal;
+  
+  
+  // 홈 버튼
+  document.getElementById('btnHomeName').textContent = L.home;
+  document.getElementById('btnHomeResult').textContent = L.home;
+  
+  updateGoalDisplay();
+}
+
+const ROUND_CONFIG = {
+  1: { minDan: 2, maxDan: 9, timeLimit: 5, bonus10: 1, bonus5: 3 },
+  2: { minDan: 11, maxDan: 15, timeLimit: 10, bonus10: 3, bonus5: 5 },
+  3: { minDan: 16, maxDan: 19, timeLimit: 10, bonus10: 3, bonus5: 5 }
+};
+
+// ===== 사운드 =====
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playTone(freq, duration, type = 'triangle') {
+  if (!audioCtx) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+
+function playTick(percent) {
+  if (percent > 80) playTone(500, 0.05);
+  else if (percent > 60) playTone(650, 0.06);
+  else if (percent > 30) playTone(800, 0.07);
+  else playTone(950, 0.08);
+}
+
+function playCorrect() {
+  playTone(523, 0.1, 'sine');
+  setTimeout(() => playTone(659, 0.1, 'sine'), 80);
+  setTimeout(() => playTone(784, 0.15, 'sine'), 160);
+}
+
+function playWrong() {
+  playTone(200, 0.2, 'sawtooth');
+  setTimeout(() => playTone(150, 0.3, 'sawtooth'), 150);
+}
+
+function playRoundStart() {
+  playTone(440, 0.15, 'sine');
+  setTimeout(() => playTone(550, 0.15, 'sine'), 150);
+  setTimeout(() => playTone(660, 0.2, 'sine'), 300);
+}
+
+// ===== 게임 상태 =====
+let playerName = '';
+let isPracticeMode = false;
+let practiceCorrect = 0;
+let practiceWrong = 0;
+let round = 1;
+let question = 1;
+let num1 = 0, num2 = 0;
+let correctAnswer = 0;
+let score = 0;
+let options = [];
+let answered = false;
+let gameRunning = false;
+let lastNum1 = 0, lastNum2 = 0;
+let totalCorrect = 0, totalQuestions = 0;
+let wrongAnswerIdx = -1;
+let wrongAnswerSelected = null;
+let timerStart = 0, timerDuration = 5000, rafId = null, lastTickPercent = 100;
+
+let leaderboard = [];
+let bestScore = 0;
+let goalData = null;
+try {
+  const saved = localStorage.getItem('multiply-leaderboard');
+  if (saved) leaderboard = JSON.parse(saved);
+  const best = localStorage.getItem('multiply-best');
+  if (best) bestScore = parseInt(best);
+  const goal = localStorage.getItem('multiply-goal');
+  if (goal) goalData = JSON.parse(goal);
+} catch(e) {}
+
+function shareResult() {
+  const L = LANG[currentLang];
+  const reward = goalData.reward || '';
+  const msg = L.shareMsg
+    .replace('{name}', playerName)
+    .replace('{score}', score)
+    .replace('{reward}', reward);
+
+  if (navigator.share) {
+    navigator.share({
+      title: L.goalAchieved,
+      text: msg,
+    }).catch(() => {});
+  } else {
+    alert(msg);
+  }
+}
+
+function init() {
+  setLang(currentLang);
+  if (leaderboard.length > 0) {
+    const best = leaderboard[0];
+    document.getElementById('bestRecord').classList.remove('hidden');
+    document.getElementById('bestName').textContent = best.name;
+    document.getElementById('bestScore').textContent = best.score;
+  }
+  updateGoalDisplay();
+}
+init();
+
+function showScreen(name) {
+  document.querySelectorAll('.container, .round-screen').forEach(el => el.classList.add('hidden'));
+  document.getElementById('screen-' + name).classList.remove('hidden');
+  if (name === 'name') document.getElementById('nameInput').focus();
+  if (name === 'title' || name === 'board') {
+    document.body.classList.remove('round-1', 'round-2', 'round-3');
+  }
+}
+
+function showHowToPlay() { document.getElementById('modal-how').classList.remove('hidden'); }
+function closeHowToPlay() { document.getElementById('modal-how').classList.add('hidden'); }
+
+// ===== 목표 설정 =====
+function showGoalModal() {
+  const L = LANG[currentLang];
+  if (goalData) {
+    document.getElementById('goalType').value = goalData.type;
+    if (goalData.type === 'beat') {
+      document.getElementById('targetName').value = goalData.targetName || '';
+      document.getElementById('theirScore').value = goalData.targetScore || '';
+      document.getElementById('targetScore').value = goalData.targetScore || '';
+    }
+    document.getElementById('rewardInput').value = goalData.reward || '';
+    document.getElementById('goalType').value = 'score';
+    document.getElementById('targetScore').value = '';
+    document.getElementById('targetName').value = '';
+    document.getElementById('theirScore').value = '';
+    document.getElementById('rewardInput').value = '';
+  }
+  toggleGoalType();
+  document.getElementById('modal-goal').classList.remove('hidden');
+}
+
+function closeGoalModal() {
+  document.getElementById('modal-goal').classList.add('hidden');
+}
+
+function toggleGoalType() {
+  const type = document.getElementById('goalType').value;
+  document.getElementById('scoreFields').classList.toggle('hidden', type === 'beat');
+  document.getElementById('beatFields').classList.toggle('hidden', type === 'score');
+}
+
+function saveGoal() {
+  const type = document.getElementById('goalType').value;
+  const reward = document.getElementById('rewardInput').value.trim();
+  
+  let targetScore, targetName;
+  if (type === 'beat') {
+    targetName = document.getElementById('targetName').value.trim();
+    targetScore = parseInt(document.getElementById('theirScore').value) || 0;
+    if (!targetName || targetScore <= 0) return;
+  } else {
+    targetScore = parseInt(document.getElementById('targetScore').value) || 0;
+    if (targetScore <= 0) return;
+  }
+  
+  goalData = { type, targetScore, targetName, reward };
+  try { localStorage.setItem('multiply-goal', JSON.stringify(goalData)); } catch(e) {}
+  
+  updateGoalDisplay();
+  closeGoalModal();
+}
+
+function deleteGoal() {
+  goalData = null;
+  try { localStorage.removeItem('multiply-goal'); } catch(e) {}
+  updateGoalDisplay();
+  closeGoalModal();
+}
+
+function updateGoalDisplay() {
+  const L = LANG[currentLang];
+  const display = document.getElementById('goalDisplay');
+
+  if (goalData && goalData.targetScore > 0) {
+    display.classList.remove('hidden');
+
+    let targetText;
+    if (goalData.type === 'beat') {
+      targetText = L.beatGoal.replace('{name}', goalData.targetName).replace('{score}', goalData.targetScore);
+    } else {
+      targetText = L.scoreGoal.replace('{score}', goalData.targetScore);
+    }
+    document.getElementById('goalTarget').textContent = L.currentGoal + ': ' + targetText;
+
+    if (goalData.reward) {
+      document.getElementById('goalReward').textContent = L.rewardLabel.replace('{reward}', goalData.reward);
+      document.getElementById('goalReward').classList.remove('hidden');
+    } else {
+      document.getElementById('goalReward').classList.add('hidden');
+    }
+  } else {
+    display.classList.add('hidden');
+  }
+}
+
+function checkGoalAchievement(finalScore) {
+  if (!goalData || goalData.targetScore <= 0) return null;
+  return finalScore > goalData.targetScore;
+}
+
+// 라운드별 배경색 변경
+function updateRoundBackground(roundNum) {
+  document.body.classList.remove('round-1', 'round-2', 'round-3');
+  document.body.classList.add('round-' + roundNum);
+}
+
+// 목표 달성 축하 애니메이션
+let goalCelebrated = false;
+
+function checkAndCelebrateGoal(currentScore) {
+  if (goalCelebrated || !goalData || goalData.targetScore <= 0) return;
+  if (currentScore > goalData.targetScore) {
+    goalCelebrated = true;
+    showGoalCelebration();
+  }
+}
+
+function showGoalCelebration() {
+  const celebration = document.createElement('div');
+  celebration.className = 'goal-celebration';
+  
+  // 컨페티 생성
+  const colors = ['#ffd93d', '#ff6b6b', '#ff8e53', '#00ccff', '#ff8c00', '#ff69b4'];
+  for (let i = 0; i < 50; i++) {
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti';
+    confetti.style.left = Math.random() * 100 + '%';
+    confetti.style.top = '-10px';
+    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+    confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    celebration.appendChild(confetti);
+  }
+  
+  // 불꽃놀이 효과
+  for (let i = 0; i < 20; i++) {
+    const firework = document.createElement('div');
+    firework.className = 'firework';
+    firework.style.left = Math.random() * 100 + '%';
+    firework.style.top = Math.random() * 50 + '%';
+    firework.style.background = colors[Math.floor(Math.random() * colors.length)];
+    firework.style.boxShadow = '0 0 10px ' + colors[Math.floor(Math.random() * colors.length)];
+    firework.style.animationDelay = Math.random() * 0.3 + 's';
+    celebration.appendChild(firework);
+  }
+  
+  // 축하 텍스트
+  const text = document.createElement('div');
+  text.className = 'celebration-text';
+  text.innerHTML = '🎉 ' + LANG[currentLang].goalAchieved + ' 🎉';
+  
+  // 보상이 있으면 보상도 표시
+  if (goalData && goalData.reward) {
+    text.innerHTML += '<div class="celebration-reward">🎁 ' + goalData.reward + '</div>';
+  }
+  
+  celebration.appendChild(text);
+  
+  document.body.appendChild(celebration);
+  
+  // 사운드
+  playGoalSound();
+  
+  // 3초 후 제거
+  setTimeout(() => {
+    celebration.remove();
+  }, 3000);
+}
+
+function playGoalSound() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  
+  // 팡파레 효과
+  [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    osc.type = 'triangle';
+    gain.gain.setValueAtTime(0.3, now + i * 0.15);
+    gain.gain.linearRampToValueAtTime(0.01, now + i * 0.15 + 0.4);
+    osc.start(now + i * 0.15);
+    osc.stop(now + i * 0.15 + 0.5);
+  });
+}
+
+// ===== 부활 기능 =====
+document.getElementById('nameInput').addEventListener('input', function() {
+  document.getElementById('btnGo').disabled = !this.value.trim();
+});
+document.getElementById('nameInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter' && this.value.trim()) startGame();
+});
+
+function makeOptions(n1, n2, correct) {
+  const opts = new Set([correct]);
+  opts.add(Math.random() > 0.5 ? correct + 1 : correct - 1);
+  opts.add(correct + 2); opts.add(correct - 2);
+  if (n2 > 1) opts.add(n1 * (n2 - 1));
+  opts.add(n1 * (n2 + 1));
+  if (n1 > 1) opts.add((n1 - 1) * n2);
+  opts.add((n1 + 1) * n2);
+  if (correct >= 10) { opts.add(correct + 10); if (correct - 10 > 0) opts.add(correct - 10); }
+  
+  const wrongOpts = Array.from(opts).filter(x => x !== correct && x > 0);
+  for (let i = wrongOpts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [wrongOpts[i], wrongOpts[j]] = [wrongOpts[j], wrongOpts[i]];
+  }
+  
+  const finalOpts = [correct, ...wrongOpts.slice(0, 3)];
+  while (finalOpts.length < 4) {
+    const rand = correct + Math.floor(Math.random() * 20) - 10;
+    if (rand > 0 && !finalOpts.includes(rand)) finalOpts.push(rand);
+  }
+  
+  for (let i = finalOpts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [finalOpts[i], finalOpts[j]] = [finalOpts[j], finalOpts[i]];
+  }
+  
+  return finalOpts.slice(0, 4);
+}
+
+function updateTimer() {
+  if (!gameRunning) return;
+  
+  const elapsed = Date.now() - timerStart;
+  const remaining = Math.max(0, timerDuration - elapsed);
+  const percent = (remaining / timerDuration) * 100;
+  const config = ROUND_CONFIG[round];
+  
+  const bonus10Percent = ((config.timeLimit - config.bonus10) / config.timeLimit) * 100;
+  const bonus5Percent = ((config.timeLimit - config.bonus5) / config.timeLimit) * 100;
+  
+  const tickLevel = Math.floor(percent / 10) * 10;
+  if (tickLevel < lastTickPercent && tickLevel >= 0) {
+    lastTickPercent = tickLevel;
+    playTick(percent);
+  }
+  
+  const fill = document.getElementById('timerFill');
+  fill.style.width = percent + '%';
+  
+  if (percent > bonus10Percent) fill.className = 'timer-fill bonus10';
+  else if (percent > bonus5Percent) fill.className = 'timer-fill bonus5';
+  else fill.className = 'timer-fill nobonus';
+  
+  if (remaining <= 0) {
+    gameRunning = false;
+    playWrong();
+    if (isPracticeMode) {
+      practiceWrong++;
+      setTimeout(nextQuestion, 600);
+    } else {
+      endGame(false);
+    }
+    return;
+  }
+  
+  rafId = requestAnimationFrame(updateTimer);
+}
+
+function startTimer() {
+  const config = ROUND_CONFIG[round];
+  timerDuration = config.timeLimit * 1000;
+  timerStart = Date.now();
+  lastTickPercent = 100;
+  gameRunning = true;
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(updateTimer);
+}
+
+function stopTimer() {
+  gameRunning = false;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+}
+
+function createParticles(isBonus10) {
+  const container = document.getElementById('particles');
+  container.innerHTML = '';
+  const colors = isBonus10 ? ['#ffd700', '#ffaa00', '#ff8c00'] : ['#ff6b6b', '#ff8e53', '#ffaa66'];
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.left = '50%';
+    p.style.top = '50%';
+    p.style.setProperty('--tx', (Math.random() - 0.5) * 200 + 'px');
+    p.style.setProperty('--ty', (Math.random() - 0.5) * 200 + 'px');
+    container.appendChild(p);
+  }
+}
+
+function showScoreAnimation(totalPoints, hasBonus) {
+  const bonusFloat = document.getElementById('bonusFloat');
+  bonusFloat.textContent = '+' + totalPoints;
+  
+  let colorClass = totalPoints >= 20 ? 'bonus10' : totalPoints >= 15 ? 'bonus5' : 'bonus0';
+  if (totalPoints >= 15) createParticles(totalPoints >= 20);
+  
+  bonusFloat.className = 'bonus-float ' + colorClass + ' animate';
+  
+  if (hasBonus) {
+    const sc = document.getElementById('scoreContainer');
+    sc.classList.add('bonus-active');
+    document.getElementById('scoreNum').classList.add('animating');
+    setTimeout(() => {
+      sc.classList.remove('bonus-active');
+      document.getElementById('scoreNum').classList.remove('animating');
+    }, 1000);
+  }
+  
+  setTimeout(() => { bonusFloat.className = 'bonus-float'; }, 1000);
+}
+
+function showRoundScreen(roundNum, callback) {
+  const L = LANG[currentLang];
+  document.getElementById('roundDisplay').textContent = roundNum;
+  document.getElementById('roundText').textContent = L.roundStart;
+  document.getElementById('screen-round').classList.remove('hidden');
+  playRoundStart();
+  
+  setTimeout(() => {
+    document.getElementById('screen-round').classList.add('hidden');
+    callback();
+  }, 1500);
+}
+
+function generateQuestion() {
+  const config = ROUND_CONFIG[round];
+  let newNum1, newNum2, attempts = 0;
+  
+  do {
+    newNum1 = Math.floor(Math.random() * (config.maxDan - config.minDan + 1)) + config.minDan;
+    newNum2 = Math.floor(Math.random() * 9) + 1;
+    attempts++;
+  } while ((newNum1 === lastNum1 && newNum2 === lastNum2) && attempts < 20);
+  
+  num1 = newNum1; num2 = newNum2;
+  lastNum1 = num1; lastNum2 = num2;
+  correctAnswer = num1 * num2;
+  options = makeOptions(num1, num2, correctAnswer);
+}
+
+function showQuestion() {
+  generateQuestion();
+  answered = false;
+  
+  const L = LANG[currentLang];
+  
+  document.getElementById('roundNum').textContent = round;
+  document.getElementById('questionNum').textContent = question;
+  document.getElementById('scoreNum').textContent = score;
+  document.getElementById('num1').textContent = num1;
+  document.getElementById('num2').textContent = num2;
+  document.getElementById('particles').innerHTML = '';
+  
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById('opt' + i);
+    btn.textContent = options[i];
+    btn.className = 'opt-btn';
+    btn.disabled = false;
+  }
+  
+  startTimer();
+}
+
+// 연습모드 저장용 변수
+let savedRound = 1;
+let savedQuestion = 1;
+
+function startPractice() {
+  initAudio();
+  isPracticeMode = true;
+  playerName = '연습';
+  round = 1; question = 1; score = 0;
+  lastNum1 = 0; lastNum2 = 0;
+  totalCorrect = 0; totalQuestions = 0;
+  practiceCorrect = 0; practiceWrong = 0;
+  savedRound = 1; savedQuestion = 1;
+
+  document.getElementById('scoreContainer').classList.add('hidden');
+  document.getElementById('btnQuit').classList.remove('hidden');
+
+  updateRoundBackground(1);
+  showScreen('game');
+  showRoundScreen(1, showQuestion);
+}
+
+function resumePractice() {
+  // 멈춘 시점에서 계속
+  round = savedRound;
+  question = savedQuestion;
+
+  document.getElementById('scoreContainer').classList.add('hidden');
+  document.getElementById('btnQuit').classList.remove('hidden');
+
+  updateRoundBackground(round);
+  showScreen('game');
+  showQuestion();
+}
+
+function startGame() {
+  playerName = document.getElementById('nameInput').value.trim();
+  if (!playerName) return;
+
+  initAudio();
+  round = 1; question = 1; score = 0;
+  lastNum1 = 0; lastNum2 = 0;
+  totalCorrect = 0; totalQuestions = 0;
+  practiceCorrect = 0; practiceWrong = 0;
+  goalCelebrated = false;
+
+  // 플레이어 이름 표시
+  document.getElementById('playerDisplay').textContent = '🎮 ' + playerName;
+
+  // 연습모드에서는 점수판 숨김, 그만두기 버튼 표시
+  if (isPracticeMode) {
+    document.getElementById('scoreContainer').classList.add('hidden');
+    document.getElementById('btnQuit').classList.remove('hidden');
+  } else {
+    document.getElementById('scoreContainer').classList.remove('hidden');
+    document.getElementById('btnQuit').classList.add('hidden');
+  }
+
+  updateRoundBackground(1);
+  showScreen('game');
+  showRoundScreen(1, showQuestion);
+}
+
+function restartGame() {
+  round = 1; question = 1; score = 0;
+  lastNum1 = 0; lastNum2 = 0;
+  totalCorrect = 0; totalQuestions = 0;
+  practiceCorrect = 0; practiceWrong = 0;
+  goalCelebrated = false;
+
+  // 연습모드에서는 점수판 숨김, 그만두기 버튼 표시
+  if (isPracticeMode) {
+    document.getElementById('scoreContainer').classList.add('hidden');
+    document.getElementById('btnQuit').classList.remove('hidden');
+  } else {
+    document.getElementById('scoreContainer').classList.remove('hidden');
+    document.getElementById('btnQuit').classList.add('hidden');
+  }
+
+  updateRoundBackground(1);
+  showScreen('game');
+  showRoundScreen(1, showQuestion);
+}
+
+function selectAnswer(idx) {
+  if (answered || !gameRunning) return;
+  answered = true;
+  stopTimer();
+  totalQuestions++;
+  
+  const selected = options[idx];
+  const elapsed = Date.now() - timerStart;
+  const elapsedSec = elapsed / 1000;
+  const config = ROUND_CONFIG[round];
+  
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById('opt' + i);
+    btn.disabled = true;
+    if (options[i] === correctAnswer) btn.classList.add('correct');
+    else if (i === idx) btn.classList.add('wrong');
+  }
+  
+  if (selected === correctAnswer) {
+    playCorrect();
+    totalCorrect++;
+    if (isPracticeMode) {
+      practiceCorrect++;
+    }
+
+    // 정답 애니메이션
+    const correctBtn = document.getElementById('opt' + idx);
+    correctBtn.classList.add('bounce', 'correct-pulse');
+    if (!isPracticeMode) {
+      document.getElementById('scoreContainer').classList.add('bounce');
+    }
+    setTimeout(() => {
+      correctBtn.classList.remove('bounce', 'correct-pulse');
+      if (!isPracticeMode) {
+        document.getElementById('scoreContainer').classList.remove('bounce');
+      }
+    }, 600);
+
+    if (!isPracticeMode) {
+      let points = 10;
+      if (elapsedSec <= config.bonus10) points = 20;
+      else if (elapsedSec <= config.bonus5) points = 15;
+
+      score += points;
+
+      // 목표 달성 체크
+      checkAndCelebrateGoal(score);
+
+      showScoreAnimation(points, points >= 15);
+
+      setTimeout(() => { document.getElementById('scoreNum').textContent = score; }, 200);
+    }
+    setTimeout(nextQuestion, 500);
+  } else {
+    playWrong();
+    wrongAnswerIdx = idx;
+    wrongAnswerSelected = selected;
+    if (isPracticeMode) {
+      practiceWrong++;
+    }
+
+    // 오답 애니메이션 - 화면 흔들림
+    document.getElementById('screen-game').classList.add('shake');
+    setTimeout(() => {
+      document.getElementById('screen-game').classList.remove('shake');
+    }, 500);
+
+    if (isPracticeMode) {
+      setTimeout(nextQuestion, 600);
+    } else {
+      setTimeout(() => endGame(false), 600);
+    }
+  }
+}
+
+function nextQuestion() {
+  question++;
+  
+  if (question > 10) {
+    round++;
+    if (round > 3) { endGame(true); return; }
+    question = 1;
+    lastNum1 = 0; lastNum2 = 0;
+    updateRoundBackground(round);
+    showRoundScreen(round, showQuestion);
+    return;
+  }
+  
+  showQuestion();
+}
+
+function quitPractice() {
+  stopTimer();
+  // 현재 위치 저장
+  savedRound = round;
+  savedQuestion = question;
+  endGame(false);
+}
+
+function endGame(won) {
+  stopTimer();
+  const L = LANG[currentLang];
+
+  if (isPracticeMode) {
+    // 연습 모드 결과 화면
+    document.getElementById('resultEmoji').textContent = '📝';
+    document.getElementById('resultTitle').textContent = L.practiceResult;
+    document.getElementById('resultTitle').className = 'result-title win';
+    document.getElementById('resultName').textContent = '';
+    document.getElementById('resultNameSuffix').textContent = '';
+    document.getElementById('resultScore').textContent = '';
+    document.getElementById('resultBest').classList.add('hidden');
+    document.getElementById('resultStats').classList.remove('hidden');
+    document.getElementById('resultStats').textContent = L.practiceCorrect + ': ' + practiceCorrect + ' | ' + L.practiceWrong + ': ' + practiceWrong;
+    document.getElementById('goalResult').classList.add('hidden');
+    document.getElementById('resultMsg').textContent = '';
+    // 랭킹 버튼 숨김, 다시하기를 계속하기로 변경
+    document.getElementById('btnRankResult').classList.add('hidden');
+    document.getElementById('btnRetry').textContent = L.continue || '계속하기';
+    document.getElementById('btnRetry').onclick = resumePractice;
+    showScreen('result');
+    return;
+  }
+
+  // 일반 모드: 랭킹 버튼 표시, 다시하기 버튼 복원
+  document.getElementById('btnRankResult').classList.remove('hidden');
+  document.getElementById('btnRetry').textContent = L.retry;
+  document.getElementById('btnRetry').onclick = restartGame;
+
+  let isNewBest = false;
+  if (score > bestScore) {
+    bestScore = score;
+    isNewBest = true;
+    try { localStorage.setItem('multiply-best', bestScore.toString()); } catch(e) {}
+  }
+
+  if (score > 0) {
+    leaderboard.push({ name: playerName, score: score, date: new Date().toLocaleDateString() });
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard = leaderboard.slice(0, 10);
+    try { localStorage.setItem('multiply-leaderboard', JSON.stringify(leaderboard)); } catch(e) {}
+    // 홈화면 최고기록 업데이트
+    if (leaderboard.length > 0) {
+      const best = leaderboard[0];
+      document.getElementById('bestRecord').classList.remove('hidden');
+      document.getElementById('bestName').textContent = best.name;
+      document.getElementById('bestScore').textContent = best.score;
+    }
+  }
+
+  document.getElementById('resultEmoji').textContent = won ? '🎉' : '😢';
+  document.getElementById('resultTitle').textContent = won ? L.congrats : L.gameOver;
+  document.getElementById('resultTitle').className = 'result-title ' + (won ? 'win' : 'lose');
+  document.getElementById('resultName').textContent = playerName;
+  document.getElementById('resultNameSuffix').textContent = L.yourScore;
+  document.getElementById('resultScore').textContent = score + L.pts;
+
+  if (isNewBest && score > 0) {
+    document.getElementById('resultBest').textContent = L.newBest;
+    document.getElementById('resultBest').classList.remove('hidden');
+  } else {
+    document.getElementById('resultBest').classList.add('hidden');
+  }
+
+  document.getElementById('resultStats').classList.add('hidden');
+
+  // 목표 달성 체크
+  const goalResult = document.getElementById('goalResult');
+  const goalAchieved = checkGoalAchievement(score);
+
+  if (goalAchieved === true) {
+    goalResult.classList.remove('hidden', 'goal-failed');
+    goalResult.classList.add('goal-achieved');
+    document.getElementById('goalResultTitle').textContent = L.goalAchieved;
+    document.getElementById('goalResultName').textContent = '🏆 ' + playerName;
+    document.getElementById('goalResultReward').textContent = '🎁 ' + (goalData.reward || '');
+    document.getElementById('goalResultReward').classList.toggle('hidden', !goalData.reward);
+    document.getElementById('goalResultSub').textContent = L.getReward;
+    document.getElementById('btnShare').classList.remove('hidden');
+    document.getElementById('btnShare').textContent = L.share;
+  } else if (goalAchieved === false) {
+    goalResult.classList.remove('hidden', 'goal-achieved');
+    goalResult.classList.add('goal-failed');
+    document.getElementById('goalResultTitle').textContent = L.goalNotYet;
+    document.getElementById('goalResultReward').classList.add('hidden');
+    document.getElementById('goalResultSub').textContent = L.needed.replace('{score}', goalData.targetScore) + L.pts + ' | ' + L.tryAgain;
+    document.getElementById('btnShare').classList.add('hidden');
+  } else {
+    goalResult.classList.add('hidden');
+    document.getElementById('btnShare').classList.add('hidden');
+  }
+
+  let msg = '';
+  if (won) {
+    if (score >= 550) msg = L.msg1;
+    else if (score >= 450) msg = L.msg2;
+    else if (score >= 350) msg = L.msg3;
+    else msg = L.msg4;
+  }
+  document.getElementById('resultMsg').textContent = msg;
+
+  showScreen('result');
+}
+
+function showLeaderboard() {
+  const L = LANG[currentLang];
+  const list = document.getElementById('boardList');
+  if (leaderboard.length === 0) {
+    list.innerHTML = '<div style="padding:30px;color:#666;text-align:center">' + L.noRecords + '</div>';
+  } else {
+    list.innerHTML = leaderboard.map((entry, i) => {
+      const rank = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+      return `<div class="board-item"><div style="display:flex;align-items:center;gap:12px"><span class="board-rank">${rank}</span><span class="board-name">${entry.name}</span></div><span class="board-score">${entry.score}${L.pts}</span></div>`;
+    }).join('');
+  }
+  showScreen('board');
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && gameRunning) {
+    const elapsed = Date.now() - timerStart;
+    if (elapsed >= timerDuration) {
+      stopTimer();
+      if (!answered) {
+        if (isPracticeMode) {
+          playWrong();
+          practiceWrong++;
+          setTimeout(nextQuestion, 600);
+        } else {
+          endGame(false);
+        }
+      }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
