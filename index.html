@@ -208,7 +208,18 @@
     .board-name { font-weight: 600; }
     .board-score { color: #ffd93d; font-weight: 700; }
     .btn-back { background: transparent; border: 2px solid #555 !important; padding: 14px 40px; border-radius: 50px; font-size: 16px; color: #888; margin-top: 30px; }
-    
+
+    /* 광고 팝업 */
+    .ad-popup-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+    .ad-popup { background: linear-gradient(135deg, #2d2410, #1a1408); border-radius: 24px; padding: 35px 30px; max-width: 340px; width: 100%; border: 2px solid #ffd93d; text-align: center; box-shadow: 0 0 40px rgba(255,217,61,0.3); }
+    .ad-popup-icon { font-size: 60px; margin-bottom: 15px; }
+    .ad-popup-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+    .ad-popup-msg { font-size: 14px; color: #ffd93d; margin-bottom: 25px; line-height: 1.6; }
+    .ad-popup-count { font-size: 13px; color: #666; margin-bottom: 20px; }
+    .btn-watch-ad { background: linear-gradient(135deg, #10b981, #34d399); padding: 16px 40px; border-radius: 50px; font-size: 16px; font-weight: 700; color: #fff; width: 100%; margin-bottom: 12px; box-shadow: 0 0 20px rgba(16,185,129,0.4); }
+    .btn-remove-ads { background: linear-gradient(135deg, #f59e0b, #fbbf24); padding: 14px 40px; border-radius: 50px; font-size: 14px; font-weight: 700; color: #fff; width: 100%; box-shadow: 0 0 20px rgba(245,158,11,0.3); }
+    .ad-free-badge { display: inline-block; background: linear-gradient(135deg, #10b981, #34d399); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #fff; margin-left: 8px; }
+
     /* 목표 설정 */
     .btn-goal { background: transparent; border: 2px solid #555 !important; padding: 10px 20px; border-radius: 50px; font-size: 13px; color: #888; }
     .goal-display { background: rgba(255,217,61,0.1); border: 1px solid rgba(255,217,61,0.3); border-radius: 12px; padding: 12px 20px; margin-bottom: 20px; max-width: 280px; }
@@ -423,6 +434,18 @@
   <button id="btnBack" class="btn-back" onclick="showScreen('title')">돌아가기</button>
 </div>
 
+<!-- 광고 팝업 -->
+<div id="ad-popup" class="ad-popup-overlay hidden">
+  <div class="ad-popup">
+    <div class="ad-popup-icon">🎮</div>
+    <div id="adPopupTitle" class="ad-popup-title">계속 플레이하기</div>
+    <div id="adPopupMsg" class="ad-popup-msg">3회 플레이를 완료했습니다!<br>광고를 시청하거나 광고 없는 버전을 구매하세요.</div>
+    <div id="adPlayCount" class="ad-popup-count"></div>
+    <button id="btnWatchAd" class="btn-watch-ad" onclick="watchAdAndContinue()">📺 광고 보고 계속하기</button>
+    <button id="btnRemoveAds" class="btn-remove-ads" onclick="purchaseAdFree()">💎 광고 제거 (구매)</button>
+  </div>
+</div>
+
 <script>
 // ===== 다국어 =====
 const LANG = {
@@ -490,6 +513,11 @@ const LANG = {
     continue: '계속하기',
     share: '📤 공유하기',
     shareMsg: '🎉 {name}님이 곱하기 마스터에서 {score}점으로 목표를 달성했어요! 보상: {reward}',
+    adPopupTitle: '계속 플레이하기',
+    adPopupMsg: '3회 플레이를 완료했습니다!<br>광고를 시청하거나 광고 없는 버전을 구매하세요.',
+    watchAd: '📺 광고 보고 계속하기',
+    removeAds: '💎 광고 제거 (구매)',
+    adFree: '광고 없음',
   },
   en: {
     title: 'Multiplication Master',
@@ -555,6 +583,11 @@ const LANG = {
     continue: 'Continue',
     share: '📤 Share',
     shareMsg: '🎉 {name} achieved the goal with {score}pts in Multiplication Master! Reward: {reward}',
+    adPopupTitle: 'Continue Playing',
+    adPopupMsg: 'You\'ve completed 3 plays!<br>Watch an ad or purchase ad-free version.',
+    watchAd: '📺 Watch Ad to Continue',
+    removeAds: '💎 Remove Ads (Purchase)',
+    adFree: 'Ad-Free',
   },
   zh: {
     title: '乘法大师',
@@ -620,6 +653,11 @@ const LANG = {
     continue: '继续',
     share: '📤 分享',
     shareMsg: '🎉 {name}在乘法大师中以{score}分达成目标！奖励：{reward}',
+    adPopupTitle: '继续游戏',
+    adPopupMsg: '您已完成3次游戏！<br>观看广告或购买无广告版本。',
+    watchAd: '📺 看广告继续',
+    removeAds: '💎 移除广告 (购买)',
+    adFree: '无广告',
   },
   ja: {
     title: '掛け算マスター',
@@ -685,6 +723,11 @@ const LANG = {
     continue: '続ける',
     share: '📤 共有',
     shareMsg: '🎉 {name}さんが掛け算マスターで{score}点で目標達成！ご褒美：{reward}',
+    adPopupTitle: 'プレイを続ける',
+    adPopupMsg: '3回プレイしました！<br>広告を見るか、広告なし版を購入してください。',
+    watchAd: '📺 広告を見て続ける',
+    removeAds: '💎 広告を削除 (購入)',
+    adFree: '広告なし',
   },
   vi: {
     title: 'Bậc Thầy Nhân',
@@ -750,6 +793,11 @@ const LANG = {
     continue: 'Tiếp tục',
     share: '📤 Chia sẻ',
     shareMsg: '🎉 {name} đã đạt mục tiêu với {score} điểm trong Multiplication Master! Phần thưởng: {reward}',
+    adPopupTitle: 'Tiếp tục chơi',
+    adPopupMsg: 'Bạn đã chơi 3 lần!<br>Xem quảng cáo hoặc mua bản không quảng cáo.',
+    watchAd: '📺 Xem quảng cáo để tiếp tục',
+    removeAds: '💎 Xóa quảng cáo (mua)',
+    adFree: '🎉 Đã xóa quảng cáo!',
   },
   es: {
     title: 'Maestro Multiplicación',
@@ -815,6 +863,11 @@ const LANG = {
     continue: 'Continuar',
     share: '📤 Compartir',
     shareMsg: '🎉 ¡{name} logró la meta con {score}pts en Multiplication Master! Recompensa: {reward}',
+    adPopupTitle: 'Seguir jugando',
+    adPopupMsg: '¡Has jugado 3 veces!<br>Mira un anuncio o compra la versión sin anuncios.',
+    watchAd: '📺 Ver anuncio para continuar',
+    removeAds: '💎 Quitar anuncios (comprar)',
+    adFree: '🎉 ¡Sin anuncios!',
   },
   fr: {
     title: 'Maître Multiplication',
@@ -880,6 +933,11 @@ const LANG = {
     continue: 'Continuer',
     share: '📤 Partager',
     shareMsg: '🎉 {name} a atteint l\'objectif avec {score}pts dans Multiplication Master! Récompense: {reward}',
+    adPopupTitle: 'Continuer à jouer',
+    adPopupMsg: 'Vous avez joué 3 fois!<br>Regardez une pub ou achetez la version sans pub.',
+    watchAd: '📺 Voir la pub pour continuer',
+    removeAds: '💎 Supprimer les pubs (acheter)',
+    adFree: '🎉 Sans publicités!',
   },
   de: {
     title: 'Multiplikations-Meister',
@@ -945,6 +1003,11 @@ const LANG = {
     continue: 'Weiter',
     share: '📤 Teilen',
     shareMsg: '🎉 {name} hat das Ziel mit {score}Pkt in Multiplication Master erreicht! Belohnung: {reward}',
+    adPopupTitle: 'Weiterspielen',
+    adPopupMsg: 'Du hast 3 Mal gespielt!<br>Schau eine Werbung oder kaufe die werbefreie Version.',
+    watchAd: '📺 Werbung ansehen zum Fortfahren',
+    removeAds: '💎 Werbung entfernen (kaufen)',
+    adFree: '🎉 Werbefrei!',
   },
   id: {
     title: 'Master Perkalian',
@@ -1010,6 +1073,11 @@ const LANG = {
     continue: 'Lanjut',
     share: '📤 Bagikan',
     shareMsg: '🎉 {name} mencapai target dengan {score}poin di Multiplication Master! Hadiah: {reward}',
+    adPopupTitle: 'Lanjut Bermain',
+    adPopupMsg: 'Kamu sudah main 3 kali!<br>Tonton iklan atau beli versi bebas iklan.',
+    watchAd: '📺 Tonton iklan untuk lanjut',
+    removeAds: '💎 Hapus iklan (beli)',
+    adFree: '🎉 Bebas iklan!',
   },
   pt: {
     title: 'Mestre da Multiplicação',
@@ -1075,6 +1143,11 @@ const LANG = {
     continue: 'Continuar',
     share: '📤 Compartilhar',
     shareMsg: '🎉 {name} alcançou a meta com {score}pts no Mestre da Multiplicação! Recompensa: {reward}',
+    adPopupTitle: 'Continuar jogando',
+    adPopupMsg: 'Você já jogou 3 vezes!<br>Assista um anúncio ou compre a versão sem anúncios.',
+    watchAd: '📺 Ver anúncio para continuar',
+    removeAds: '💎 Remover anúncios (comprar)',
+    adFree: '🎉 Sem anúncios!',
   },
   ru: {
     title: 'Мастер Умножения',
@@ -1140,6 +1213,11 @@ const LANG = {
     continue: 'Продолжить',
     share: '📤 Поделиться',
     shareMsg: '🎉 {name} достиг цели с {score}очк в Мастере Умножения! Награда: {reward}',
+    adPopupTitle: 'Продолжить игру',
+    adPopupMsg: 'Вы сыграли 3 раза!<br>Посмотрите рекламу или купите версию без рекламы.',
+    watchAd: '📺 Смотреть рекламу',
+    removeAds: '💎 Убрать рекламу (купить)',
+    adFree: '🎉 Без рекламы!',
   },
   th: {
     title: 'เซียนคูณเลข',
@@ -1205,6 +1283,11 @@ const LANG = {
     continue: 'ต่อ',
     share: '📤 แชร์',
     shareMsg: '🎉 {name} ทำเป้าได้ {score}คะแนน ใน เซียนคูณเลข! รางวัล: {reward}',
+    adPopupTitle: 'เล่นต่อ',
+    adPopupMsg: 'คุณเล่นไป 3 ครั้งแล้ว!<br>ดูโฆษณาหรือซื้อเวอร์ชันไม่มีโฆษณา',
+    watchAd: '📺 ดูโฆษณาเพื่อเล่นต่อ',
+    removeAds: '💎 ลบโฆษณา (ซื้อ)',
+    adFree: '🎉 ไม่มีโฆษณา!',
   },
   tr: {
     title: 'Çarpım Ustası',
@@ -1270,6 +1353,11 @@ const LANG = {
     continue: 'Devam',
     share: '📤 Paylaş',
     shareMsg: '🎉 {name} Çarpım Ustası\'nda {score}puan ile hedefe ulaştı! Ödül: {reward}',
+    adPopupTitle: 'Oynamaya Devam',
+    adPopupMsg: '3 kez oynadınız!<br>Reklam izleyin veya reklamsız sürümü satın alın.',
+    watchAd: '📺 Reklam izle ve devam et',
+    removeAds: '💎 Reklamları kaldır (satın al)',
+    adFree: '🎉 Reklamsız!',
   }
 };
 
@@ -2142,6 +2230,82 @@ document.addEventListener('visibilitychange', function() {
     }
   }
 });
+
+// ===== 광고 팝업 로직 =====
+let adPlayCount = 0;
+let isAdFree = false;
+const AD_PLAY_LIMIT = 3;
+
+try {
+  const savedPlayCount = localStorage.getItem('multiply-ad-playcount');
+  if (savedPlayCount) adPlayCount = parseInt(savedPlayCount, 10) || 0;
+  const savedAdFree = localStorage.getItem('multiply-ad-free');
+  if (savedAdFree === 'true') isAdFree = true;
+} catch(e) {}
+
+function shouldShowAdPopup() {
+  if (isAdFree || isPracticeMode) return false;
+  return adPlayCount >= AD_PLAY_LIMIT;
+}
+
+function showAdPopup() {
+  const L = LANG[currentLang];
+  document.getElementById('adPopupTitle').textContent = L.adPopupTitle;
+  document.getElementById('adPopupMsg').innerHTML = L.adPopupMsg;
+  document.getElementById('btnWatchAd').textContent = L.watchAd;
+  document.getElementById('btnRemoveAds').textContent = L.removeAds;
+  document.getElementById('ad-popup').classList.remove('hidden');
+}
+
+function hideAdPopup() {
+  document.getElementById('ad-popup').classList.add('hidden');
+}
+
+function watchAdAndContinue() {
+  // TODO: AdMob 연동 후 실제 광고 표시
+  // AdMob.showInterstitial().then(() => { ... });
+  console.log('광고 표시 (AdMob 연동 필요)');
+  adPlayCount = 0;
+  try { localStorage.setItem('multiply-ad-playcount', '0'); } catch(e) {}
+  hideAdPopup();
+  showScreen('name');
+}
+
+function purchaseAdFree() {
+  alert('In-App Purchase will be available after app is published to Google Play.\n\n앱이 Google Play에 출시된 후 인앱 결제가 가능합니다.');
+}
+
+function incrementPlayCount() {
+  if (isPracticeMode || isAdFree) return;
+  adPlayCount++;
+  try { localStorage.setItem('multiply-ad-playcount', adPlayCount.toString()); } catch(e) {}
+}
+
+// 기존 함수 래핑
+const originalRestartGame = restartGame;
+restartGame = function() {
+  if (shouldShowAdPopup()) {
+    showAdPopup();
+    return;
+  }
+  originalRestartGame();
+};
+
+// startGame 함수 래핑
+const originalStartGame = startGame;
+startGame = function() {
+  if (shouldShowAdPopup()) {
+    showAdPopup();
+    return;
+  }
+  originalStartGame();
+};
+
+const originalEndGame = endGame;
+endGame = function(won) {
+  incrementPlayCount();
+  originalEndGame(won);
+};
 </script>
 
 </body>
