@@ -248,12 +248,7 @@
     .goal-result-sub { color: #888; font-size: 13px; }
     .btn-share { background: linear-gradient(135deg, #f59e0b, #fbbf24); padding: 12px 24px; border-radius: 50px; font-size: 14px; font-weight: 600; color: #fff; margin-top: 15px; border: none; cursor: pointer; box-shadow: 0 0 15px rgba(245,158,11,0.4); }
     @keyframes goalPulse { from { box-shadow: 0 0 20px rgba(255,217,61,0.3); } to { box-shadow: 0 0 40px rgba(255,217,61,0.5); } }
-    
-      margin-top: 20px; padding: 12px 30px; border-radius: 25px;
-      background: linear-gradient(135deg, #ff6b6b, #ff8e53);
-      color: #fff; font-weight: 700; border: none; font-size: 14px;
-    }
-  
+
     /* 버튼 내 아이콘 크기 조절 */
     .btn-goal img, .btn-rank img, .btn-home img, .btn-share img, .btn-watch-ad img, .btn-remove-ads img { width: 24px; height: 24px; vertical-align: -5px; }
     .best-record img, .goal-display img { width: 22px; height: 22px; vertical-align: -4px; }
@@ -525,12 +520,32 @@ async function vibrate() {
 // ===== AdMob 광고 =====
 const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712';
 let adLoaded = false;
+let adCallback = null;
 
 async function initAdMob() {
   try {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
       const AdMob = window.Capacitor.Plugins.AdMob;
       await AdMob.initialize({ testingDevices: [], initializeForTesting: true });
+
+      AdMob.addListener('interstitialAdDismissed', () => {
+        console.log('Ad dismissed');
+        adLoaded = false;
+        prepareInterstitial();
+        if (adCallback) { adCallback(); adCallback = null; }
+      });
+
+      AdMob.addListener('interstitialAdFailedToLoad', () => {
+        console.log('Ad failed to load');
+        adLoaded = false;
+        if (adCallback) { adCallback(); adCallback = null; }
+      });
+
+      AdMob.addListener('interstitialAdFailedToShow', () => {
+        console.log('Ad failed to show');
+        if (adCallback) { adCallback(); adCallback = null; }
+      });
+
       await prepareInterstitial();
       console.log('AdMob initialized');
     }
@@ -543,20 +558,25 @@ async function prepareInterstitial() {
       const AdMob = window.Capacitor.Plugins.AdMob;
       await AdMob.prepareInterstitial({ adId: ADMOB_INTERSTITIAL_ID });
       adLoaded = true;
+      console.log('Interstitial ready');
     }
   } catch (e) { console.log('Interstitial prepare error:', e); }
 }
 
-async function showInterstitialAd() {
+async function showInterstitialAd(callback) {
+  adCallback = callback;
   try {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob && adLoaded) {
       const AdMob = window.Capacitor.Plugins.AdMob;
       await AdMob.showInterstitial();
-      adLoaded = false;
-      prepareInterstitial();
       return true;
+    } else {
+      if (adCallback) { adCallback(); adCallback = null; }
     }
-  } catch (e) { console.log('Interstitial show error:', e); }
+  } catch (e) {
+    console.log('Interstitial show error:', e);
+    if (adCallback) { adCallback(); adCallback = null; }
+  }
   return false;
 }
 
@@ -1583,8 +1603,7 @@ function playCorrect() {
 }
 
 function playWrong() {
-  playTone(200, 0.2, 'sawtooth');
-  setTimeout(() => playTone(150, 0.3, 'sawtooth'), 150);
+  playTone(200, 0.2, 'sine');
 }
 
 function playRoundStart() {
@@ -1593,40 +1612,52 @@ function playRoundStart() {
   setTimeout(() => playTone(660, 0.2, 'sine'), 300);
 }
 
-// 3라운드 클리어 축하 (도-미-솔)
+// 클리어 축하 (심플하게)
 function playClear() {
   playTone(523, 0.15, 'sine');
   setTimeout(() => playTone(659, 0.15, 'sine'), 150);
-  setTimeout(() => playTone(784, 0.3, 'sine'), 300);
+  setTimeout(() => playTone(784, 0.25, 'sine'), 300);
 }
+// 게임오버 - 슬픈 하강음function playGameOver() {  playTone(392, 0.2, 'sine');  setTimeout(() => playTone(330, 0.2, 'sine'), 200);  setTimeout(() => playTone(262, 0.3, 'sine'), 400);}
 
-// 최고기록 갱신 축하 (도-미-솔-도 화려하게)
+// 최고기록 - 화려하게!
 function playNewRecord() {
-  playTone(523, 0.12, 'sine');
-  setTimeout(() => playTone(659, 0.12, 'sine'), 120);
-  setTimeout(() => playTone(784, 0.12, 'sine'), 240);
-  setTimeout(() => playTone(1047, 0.25, 'sine'), 360);
-  setTimeout(() => { playTone(784, 0.1, 'sine'); playTone(1047, 0.1, 'sine'); }, 550);
-  setTimeout(() => { playTone(784, 0.1, 'sine'); playTone(1047, 0.3, 'sine'); }, 700);
+  playTone(392, 0.08, 'sine');
+  setTimeout(() => playTone(440, 0.08, 'sine'), 60);
+  setTimeout(() => playTone(494, 0.08, 'sine'), 120);
+  setTimeout(() => playTone(523, 0.08, 'sine'), 180);
+  setTimeout(() => playTone(587, 0.08, 'sine'), 240);
+  setTimeout(() => playTone(659, 0.08, 'sine'), 300);
+  setTimeout(() => playTone(784, 0.15, 'sine'), 360);
+  setTimeout(() => playTone(1047, 0.25, 'sine'), 450);
+  setTimeout(() => { playTone(784, 0.1, 'sine'); playTone(988, 0.1, 'sine'); playTone(1175, 0.1, 'sine'); }, 700);
+  setTimeout(() => { playTone(784, 0.1, 'sine'); playTone(988, 0.1, 'sine'); playTone(1175, 0.1, 'sine'); }, 850);
+  setTimeout(() => { playTone(784, 0.1, 'sine'); playTone(988, 0.1, 'sine'); playTone(1175, 0.1, 'sine'); }, 1000);
+  setTimeout(() => { playTone(523, 0.7, 'sine'); playTone(659, 0.7, 'sine'); playTone(784, 0.7, 'sine'); playTone(1047, 0.7, 'sine'); playTone(1319, 0.7, 'sine'); }, 1200);
 }
 
-// 클리어 진동 (300ms)
+// 클리어 진동 (심플)
 async function vibrateClear() {
   try {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
-      await window.Capacitor.Plugins.Haptics.vibrate({ duration: 300 });
-    } else if (navigator.vibrate) { navigator.vibrate(300); }
+    if (navigator.vibrate) { navigator.vibrate(400); }
+    else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+      await window.Capacitor.Plugins.Haptics.vibrate({ duration: 400 });
+    }
   } catch (e) {}
 }
 
-// 최고기록 진동 패턴
+// 최고기록 진동 (화려!)
 async function vibrateNewRecord() {
   try {
-    if (navigator.vibrate) { navigator.vibrate([200, 100, 200, 100, 400]); }
+    if (navigator.vibrate) { navigator.vibrate([100,50,100,50,100,50,100,50,100,200,800]); }
     else if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
-      await window.Capacitor.Plugins.Haptics.vibrate({ duration: 200 });
-      setTimeout(async () => await window.Capacitor.Plugins.Haptics.vibrate({ duration: 200 }), 300);
-      setTimeout(async () => await window.Capacitor.Plugins.Haptics.vibrate({ duration: 400 }), 600);
+      const H = window.Capacitor.Plugins.Haptics;
+      await H.vibrate({ duration: 100 });
+      setTimeout(async () => await H.vibrate({ duration: 100 }), 150);
+      setTimeout(async () => await H.vibrate({ duration: 100 }), 300);
+      setTimeout(async () => await H.vibrate({ duration: 100 }), 450);
+      setTimeout(async () => await H.vibrate({ duration: 100 }), 600);
+      setTimeout(async () => await H.vibrate({ duration: 800 }), 900);
     }
   } catch (e) {}
 }
@@ -2301,7 +2332,7 @@ function endGame(won) {
   }
 
   // 클리어 축하 (최고기록 아닐 때만)
-  if (won && !(isNewBest && score > 0)) { playClear(); vibrateClear(); }
+  if (won && !(isNewBest && score > 0)) { playClear(); vibrateClear(); } else if (!won) { playGameOver(); }
 
   document.getElementById('resultEmoji').innerHTML = won ? '<img src="icon-victory.png" class="icon">' : '<img src="icon-gameover.png" class="icon">';
   document.getElementById('resultTitle').textContent = won ? L.congrats : L.gameOver;
