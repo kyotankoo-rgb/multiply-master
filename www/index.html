@@ -522,6 +522,46 @@ async function vibrate() {
   } catch (e) { /* 진동 미지원 */ }
 }
 
+// ===== AdMob 광고 =====
+const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712';
+let adLoaded = false;
+
+async function initAdMob() {
+  try {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+      const AdMob = window.Capacitor.Plugins.AdMob;
+      await AdMob.initialize({ testingDevices: [], initializeForTesting: true });
+      await prepareInterstitial();
+      console.log('AdMob initialized');
+    }
+  } catch (e) { console.log('AdMob init error:', e); }
+}
+
+async function prepareInterstitial() {
+  try {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+      const AdMob = window.Capacitor.Plugins.AdMob;
+      await AdMob.prepareInterstitial({ adId: ADMOB_INTERSTITIAL_ID });
+      adLoaded = true;
+    }
+  } catch (e) { console.log('Interstitial prepare error:', e); }
+}
+
+async function showInterstitialAd() {
+  try {
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob && adLoaded) {
+      const AdMob = window.Capacitor.Plugins.AdMob;
+      await AdMob.showInterstitial();
+      adLoaded = false;
+      prepareInterstitial();
+      return true;
+    }
+  } catch (e) { console.log('Interstitial show error:', e); }
+  return false;
+}
+
+document.addEventListener('DOMContentLoaded', initAdMob);
+
 // ===== 다국어 =====
 const LANG = {
   ko: {
