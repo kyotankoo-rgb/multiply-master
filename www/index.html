@@ -2333,7 +2333,7 @@ function endGame(won) {
   }
 
   // 클리어 축하 (최고기록 아닐 때만)
-  if (won && !(isNewBest && score > 0)) { playClear(); vibrateClear(); } else if (!won) { playGameOver(); }
+  if (!won) { playGameOver(); } else if (!(isNewBest && score > 0)) { playClear(); vibrateClear(); }
 
   document.getElementById('resultEmoji').innerHTML = won ? '<img src="icon-victory.png" class="icon">' : '<img src="icon-gameover.png" class="icon">';
   document.getElementById('resultTitle').textContent = won ? L.congrats : L.gameOver;
