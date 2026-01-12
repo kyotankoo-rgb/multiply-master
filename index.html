@@ -1853,12 +1853,14 @@ function shareResult() {
     .replace('{name}', playerName)
     .replace('{score}', score)
     .replace('{reward}', reward);
+  const title = L.goalAchieved.replace(/<br>/g, ' ');
 
-  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share) {
-    window.Capacitor.Plugins.Share.share({ title: L.goalAchieved, text: msg });
+  // Cordova socialsharing 플러그인 사용
+  if (window.plugins && window.plugins.socialsharing) {
+    window.plugins.socialsharing.share(msg, title, null, null);
   } else if (navigator.share) {
     navigator.share({
-      title: L.goalAchieved,
+      title: title,
       text: msg,
     }).catch(() => {});
   } else {
@@ -2530,7 +2532,7 @@ function endGame(won) {
     goalResult.classList.add('goal-failed');
     document.getElementById('goalResultTitle').innerHTML = L.goalNotYet;
     document.getElementById('goalResultReward').classList.add('hidden');
-    document.getElementById('goalResultSub').innerHTML = L.needed.replace('{score}', goalData.targetScore) + L.pts + ' | ' + L.tryAgain;
+    document.getElementById('goalResultSub').innerHTML = L.needed.replace('{score}', goalData.targetScore) + ' | ' + L.tryAgain;
     document.getElementById('btnShare').classList.add('hidden');
   } else {
     goalResult.classList.add('hidden');
