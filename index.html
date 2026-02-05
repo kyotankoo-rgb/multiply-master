@@ -569,7 +569,7 @@ async function initAdMob() {
   try {
     if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
       const AdMob = window.Capacitor.Plugins.AdMob;
-      await AdMob.initialize({ testingDevices: [], initializeForTesting: true });
+      await AdMob.initialize({ testingDevices: [], initializeForTesting: false });
 
       AdMob.addListener('interstitialAdDismissed', () => {
         console.log('Ad dismissed');
