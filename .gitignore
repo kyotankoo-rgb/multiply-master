@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Capacitor (iOS only - Android is tracked for ProGuard rules)
+ios/
+
+# Android build outputs (but keep source files)
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android/capacitor-community-admob/build/
+android/.idea/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
