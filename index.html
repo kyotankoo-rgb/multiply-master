@@ -625,81 +625,110 @@ async function showInterstitialAd(callback) {
 
 document.addEventListener('DOMContentLoaded', initAdMob);
 
-// ===== Google Play Billing (인앱결제) =====
-// 상품 ID - Play Console에서 생성 후 교체
-const PRODUCT_ID_REMOVE_ADS = 'remove_ads_multiply';
+// ===== Google Play Billing (인앱결제) - cordova-plugin-purchase =====
+const PRODUCT_ID_REMOVE_ADS = 'removeads';
 let billingReady = false;
+let storeProduct = null;
 
-async function initBilling() {
+function initBilling() {
   try {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Billing) {
-      const Billing = window.Capacitor.Plugins.Billing;
-      await Billing.initialize();
-      billingReady = true;
-      console.log('Billing initialized');
+    if (typeof CdvPurchase === 'undefined') {
+      console.log('CdvPurchase not available (browser mode)');
+      return;
+    }
 
-      Billing.addListener('purchaseCompleted', (purchase) => {
-        console.log('Purchase completed:', purchase);
-        if (purchase.productId === PRODUCT_ID_REMOVE_ADS) {
+    const { store, ProductType, Platform } = CdvPurchase;
+
+    store.register([{
+      id: PRODUCT_ID_REMOVE_ADS,
+      type: ProductType.NON_CONSUMABLE,
+      platform: Platform.GOOGLE_PLAY
+    }]);
+
+    store.when()
+      .productUpdated((product) => {
+        console.log('Product updated:', product.id, product.owned);
+        if (product.id === PRODUCT_ID_REMOVE_ADS) {
+          storeProduct = product;
+          if (product.owned) {
+            applyAdFree();
+          }
+        }
+      })
+      .approved((transaction) => {
+        console.log('Purchase approved:', transaction);
+        transaction.verify();
+      })
+      .verified((receipt) => {
+        console.log('Purchase verified:', receipt);
+        receipt.finish();
+      })
+      .finished((transaction) => {
+        console.log('Purchase finished:', transaction);
+        const hasRemoveAds = transaction.products.some(p => p.id === PRODUCT_ID_REMOVE_ADS);
+        if (hasRemoveAds) {
           handlePurchaseSuccess();
         }
       });
 
-      Billing.addListener('purchaseFailed', (error) => {
-        console.log('Purchase failed:', error);
-        alert('구매에 실패했습니다. 다시 시도해주세요.');
+    store.error((error) => {
+      console.log('Store error:', error);
+    });
+
+    store.initialize([Platform.GOOGLE_PLAY])
+      .then(() => {
+        billingReady = true;
+        console.log('Store initialized');
+      })
+      .catch((err) => {
+        console.log('Store init error:', err);
       });
 
-      await checkExistingPurchases();
-    } else {
-      console.log('Billing plugin not available');
-    }
   } catch (e) {
     console.log('Billing init error:', e);
   }
 }
 
-async function checkExistingPurchases() {
-  try {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Billing && billingReady) {
-      const Billing = window.Capacitor.Plugins.Billing;
-      const purchases = await Billing.getPurchases();
-      if (purchases && purchases.purchases) {
-        for (const purchase of purchases.purchases) {
-          if (purchase.productId === PRODUCT_ID_REMOVE_ADS && purchase.acknowledged) {
-            isAdFree = true;
-            saveAdData();
-            updateAdFreeUI();
-            console.log('Existing purchase restored');
-            break;
-          }
-        }
-      }
-    }
-  } catch (e) {
-    console.log('Check purchases error:', e);
+function applyAdFree() {
+  if (!isAdFree) {
+    isAdFree = true;
+    adPlayCount = 0;
+    saveAdData();
+    updateAdFreeUI();
+    console.log('Ad-free applied');
   }
 }
 
-async function purchaseRemoveAds() {
+function purchaseRemoveAds() {
   try {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Billing && billingReady) {
-      const Billing = window.Capacitor.Plugins.Billing;
-      const products = await Billing.getProducts({
-        productIds: [PRODUCT_ID_REMOVE_ADS],
-        productType: 'inapp'
-      });
-      if (products && products.products && products.products.length > 0) {
-        await Billing.purchase({
-          productId: PRODUCT_ID_REMOVE_ADS,
-          productType: 'inapp'
+    if (typeof CdvPurchase === 'undefined') {
+      alert('인앱 결제는 앱에서만 가능합니다.');
+      return;
+    }
+
+    if (!billingReady) {
+      alert('결제 시스템을 준비 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    const { store, Platform } = CdvPurchase;
+    const product = store.get(PRODUCT_ID_REMOVE_ADS, Platform.GOOGLE_PLAY);
+
+    if (product && product.getOffer()) {
+      console.log('Starting purchase for:', product.id);
+      product.getOffer().order()
+        .then((result) => {
+          console.log('Order result:', result);
+        })
+        .catch((err) => {
+          console.log('Order error:', err);
+          if (err.code !== 'USER_CANCELLED') {
+            alert('구매 중 오류가 발생했습니다.');
+          }
         });
-      } else {
-        console.log('Product not found');
-        alert('상품 정보를 불러올 수 없습니다.');
-      }
     } else {
-      alert('In-App Purchase will be available after app is published to Google Play.\n\n앱이 Google Play에 출시된 후 인앱 결제가 가능합니다.');
+      console.log('Product not found or no offer');
+      alert('상품 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.');
     }
   } catch (e) {
     console.log('Purchase error:', e);
@@ -707,18 +736,31 @@ async function purchaseRemoveAds() {
   }
 }
 
-async function restorePurchases() {
+function restorePurchases() {
   try {
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Billing && billingReady) {
-      await checkExistingPurchases();
-      if (isAdFree) {
-        alert('구매 내역이 복원되었습니다!');
-      } else {
-        alert('복원할 구매 내역이 없습니다.');
-      }
-    } else {
+    if (typeof CdvPurchase === 'undefined') {
       alert('구매 복원은 앱에서만 가능합니다.');
+      return;
     }
+
+    if (!billingReady) {
+      alert('결제 시스템을 준비 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    const { store } = CdvPurchase;
+    store.restorePurchases()
+      .then(() => {
+        if (isAdFree) {
+          alert('구매 내역이 복원되었습니다!');
+        } else {
+          alert('복원할 구매 내역이 없습니다.');
+        }
+      })
+      .catch((err) => {
+        console.log('Restore error:', err);
+        alert('구매 복원 중 오류가 발생했습니다.');
+      });
   } catch (e) {
     console.log('Restore error:', e);
     alert('구매 복원 중 오류가 발생했습니다.');
@@ -735,13 +777,23 @@ function handlePurchaseSuccess() {
 }
 
 function updateAdFreeUI() {
-  const adFreeIndicator = document.getElementById('adFreeIndicator');
-  if (adFreeIndicator) {
-    adFreeIndicator.classList.remove('hidden');
+  const btnRemoveAds = document.getElementById('btnRemoveAds');
+  if (btnRemoveAds && isAdFree) {
+    const L = LANG[currentLang] || LANG.ko;
+    btnRemoveAds.innerHTML = L.adFree || '<img src="icon-victory.png" class="icon"> 광고가 제거되었습니다!';
+    btnRemoveAds.disabled = true;
+    btnRemoveAds.style.opacity = '0.7';
   }
 }
 
-document.addEventListener('DOMContentLoaded', initBilling);
+document.addEventListener('deviceready', initBilling, false);
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if (!billingReady && typeof CdvPurchase !== 'undefined') {
+      initBilling();
+    }
+  }, 2000);
+});
 
 // ===== 다국어 =====
 const LANG = {
